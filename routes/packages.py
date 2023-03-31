@@ -101,10 +101,23 @@ def create_resource():
 		result = ckan.action.resource_create(package_id=package_id, url=url, description=description, name=resource_name, upload=open(file_path, 'rb'))
 		# if success, delete the temp file
 		if result is not None:
-			os.remove(file_path)
-			return {'ok': True, 'message': 'upload resource success', 'result': result}
+			try:
+				os.remove(file_path)
+				return {'ok': True, 'message': 'upload resource success', 'result': result}
+			except OSError as e:
+				print(f'Error removing file: {e.filename} - {e.strerror}')
 		else:
 			return {'ok': False, 'message': 'failed to upload resource'}
+
+# delete resource
+@packages_route.route('/resources/<resource_id>', methods=['DELETE'])
+def delete_resource(resource_id):
+	token = request.headers.get('Authorization')
+	user = User(jwt_token=token)
+
+	with ckan_connect(api_key=user.api_token) as ckan:
+		result = ckan.action.resource_delete(id=resource_id)
+		return {'ok': True, 'message': 'delete success'}
 
 # get package deails, (giving a name to api, then return that package)
 @packages_route.route('/<package_name>', methods=['GET'])
