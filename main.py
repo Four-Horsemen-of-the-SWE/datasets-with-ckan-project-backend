@@ -25,8 +25,6 @@ config = {
 # create a flask app
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers='Authorization')
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-app.config['UPLOAD_FOLDER'] = "http://127.0.0.1:5000/uploads"
 
 # register the blueprints
 app.register_blueprint(users_route, url_prefix=f'{API_ENDPOINT}/users')

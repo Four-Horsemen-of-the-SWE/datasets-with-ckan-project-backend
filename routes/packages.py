@@ -1,11 +1,14 @@
 import sys, os
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 from flask_cors import cross_origin
+from werkzeug.utils import secure_filename
+from werkzeug.datastructures import  FileStorage
 from ckan.ckan_connect import ckan_connect
 from postgresql.User import User
 from postgresql.Thumbnail import Thumbnail
 import tempfile
 import base64
+import io
 
 packages_route = Blueprint('packages_route', __name__)
 
@@ -78,6 +81,7 @@ def create_resource():
 	url = request.form['url']
 	description = request.form['description']
 	upload = request.files['upload']
+	resource_name = request.form['name']
 
 	payload = {
 		'package_id': package_id,
@@ -85,10 +89,22 @@ def create_resource():
 		'description': description,
 		'format': upload.content_type,
 		'name': upload.filename,
+		'upload': upload
 	}
 
+	# save the file into temp folder
+	filename = upload.filename
+	file_path = os.path.join(os.path.abspath('file_upload_temp'), filename)
+	upload.save(file_path)
+
 	with ckan_connect(api_key=user.api_token) as ckan:
-		return ckan.action.resource_create(id=package_id, upload=open('shark-tank-us-dataset.csv', 'rb'))
+		result = ckan.action.resource_create(package_id=package_id, url=url, description=description, name=resource_name, upload=open(file_path, 'rb'))
+		# if success, delete the temp file
+		if result is not None:
+			os.remove(file_path)
+			return {'ok': True, 'message': 'upload resource success', 'result': result}
+		else:
+			return {'ok': False, 'message': 'failed to upload resource'}
 
 # get package deails, (giving a name to api, then return that package)
 @packages_route.route('/<package_name>', methods=['GET'])
@@ -125,21 +141,6 @@ def search_packages():
 			return {'ok': True, 'message': 'success', 'result': result['results']}
 		else:
 			return {'ok': False, 'message': 'not found'}
-
-# add package thumbnail
-@packages_route.route('/thumbnail', methods=['POST'])
-def add_package_thumbnail():
-	file = request.files['file']
-	# os.path.join(os.path.join('staticFiles', 'uploads')
-	file.save(file.filename)
-	
-	return {'ok': True}
-
-	if 'file' not in request.files:
-		return {'ok': False, 'success': 'no file part'}
-	file = request.files['file']
-	if file.filename == '':
-		return {'ok': False, 'success': 'no selected file'}
 
 # create follow datasets (bookmarked)
 @packages_route.route('/bookmarked/<package_name>', methods=['POST'])
