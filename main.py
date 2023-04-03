@@ -24,6 +24,7 @@ config = {
 
 # create a flask app
 app = Flask(__name__)
+app.config['CORS_HEADERS'] = 'Content-Type'
 CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers='Authorization')
 
 # register the blueprints

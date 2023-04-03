@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_cors import cross_origin
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
+from ckanapi import NotAuthorized, NotFound, CKANAPIError
 from ckan.ckan_connect import ckan_connect
 from postgresql.User import User
 from postgresql.Thumbnail import Thumbnail
@@ -44,8 +45,13 @@ def create_packages():
 	user = User(jwt_token=token)
 
 	with ckan_connect(api_key=user.api_token) as ckan:
-		result = ckan.action.package_create(**payload)
-		return {'ok': True, 'message': 'success', 'result': result}
+		try:
+			result = ckan.action.package_create(**payload)
+			return {'ok': True, 'message': 'success', 'result': result}
+		except CKANAPIError:
+			return {'ok': False, 'message': 'ckan api error'}
+		except:
+			return {'ok': False, 'message': 'api server error'}
 
 # update package
 @packages_route.route('/<package_name>', methods=['PUT'])
@@ -56,8 +62,15 @@ def update_package(package_name):
 	payload = request.json
 
 	with ckan_connect(api_key=user.api_token) as ckan:
-		result = ckan.action.package_update(id=package_name, **payload)
-		return {'ok': True, 'message': 'success', 'result': result}
+		try:
+			result = ckan.action.package_update(id=package_name, **payload)
+			return {'ok': True, 'message': 'success', 'result': result}
+		except CKANAPIError:
+			return {'ok': False, 'message': 'ckan api error'}
+		except NotAuthorized:
+			return {'ok': False, 'message': 'access denied'}
+		except NotFound:
+			return {'ok': False, 'message': f'package = {package_name} not found'}
 
 # delete package
 @packages_route.route('/<package_name>', methods=['DELETE'])
@@ -67,8 +80,13 @@ def delete_package(package_name):
 	user = User(jwt_token=token)
 
 	with ckan_connect(api_key=user.api_token) as ckan:
-		result = ckan.action.package_delete(id=package_name)
-		return {'ok': True, 'message': 'success', 'result': result}
+		try:
+			result = ckan.action.package_delete(id=package_name)
+			return {'ok': True, 'message': 'success', 'result': result}
+		except NotAuthorized:
+			return {'ok': False, 'message': 'access denied'}
+		except NotFound:
+			return {'ok': False, 'message': f'package = {package_name} not found'}
 
 # create new resource
 @packages_route.route('/resources', methods=['POST'])
@@ -78,19 +96,9 @@ def create_resource():
 	user = User(jwt_token=token)
 
 	package_id = request.form['package_id']
-	url = request.form['url']
 	description = request.form['description']
-	upload = request.files['upload']
 	resource_name = request.form['name']
-
-	payload = {
-		'package_id': package_id,
-		'url': url,
-		'description': description,
-		'format': upload.content_type,
-		'name': upload.filename,
-		'upload': upload
-	}
+	upload = request.files['upload']
 
 	# save the file into temp folder
 	filename = upload.filename
@@ -98,7 +106,8 @@ def create_resource():
 	upload.save(file_path)
 
 	with ckan_connect(api_key=user.api_token) as ckan:
-		result = ckan.action.resource_create(package_id=package_id, url=url, description=description, name=resource_name, upload=open(file_path, 'rb'))
+		# result = ckan.action.resource_create(package_id=package_id, url=url, description=description, name=resource_name, upload=open(file_path, 'rb'))
+		result = ckan.action.resource_create(package_id=package_id, description=description, name=resource_name, upload=open(file_path, 'rb'))
 		# if success, delete the temp file
 		if result is not None:
 			try:
@@ -109,6 +118,41 @@ def create_resource():
 		else:
 			return {'ok': False, 'message': 'failed to upload resource'}
 
+# update resource
+@packages_route.route('/resources/<resource_id>', methods=['PUT'])
+@cross_origin()
+def update_resource(resource_id):
+	token = request.headers.get('Authorization')
+	user = User(jwt_token=token)
+
+	payload = {
+		'id': resource_id,
+	}
+
+	if 'name' in request.form:
+		payload['name'] = request.form['name']
+	if 'description' in request.form:
+		payload['description'] = request.form['description']
+	if 'upload' in request.files:
+		upload = request.files['upload']
+		# save the file into temp folder
+		filename = upload.filename
+		file_path = os.path.join(os.path.abspath('file_upload_temp'), filename)
+		upload.save(file_path)
+		payload['upload'] = open(file_path, 'rb')
+
+	with ckan_connect(api_key=user.api_token) as ckan:
+		result = ckan.action.resource_patch(**payload)
+		if result is not None:
+			try:
+				# close file
+				if 'upload' in payload:
+					payload['upload'].close()
+					os.remove(file_path)
+				return {'ok': True, 'message': 'update resource success', 'result': result}
+			except OSError as e:
+				print(f'Error removing file: {e.filename} - {e.strerror}')
+				
 # delete resource
 @packages_route.route('/resources/<resource_id>', methods=['DELETE'])
 def delete_resource(resource_id):
@@ -155,22 +199,7 @@ def search_packages():
 		else:
 			return {'ok': False, 'message': 'not found'}
 
-# create follow datasets (bookmarked)
-@packages_route.route('/bookmarked/<package_name>', methods=['POST'])
-@cross_origin()
-def create_packages_bookmarked(package_name):
-	token = request.headers.get('Authorization')
-	print('\n')
-	print(f'token ==> {token}')
-	print(f'package_name ==> {package_name}')
-	print('\n')
-	if token is None:
-		return {'ok': False, 'message': 'token not provide'}
-	user = User(jwt_token=token)
-	with ckan_connect(api_key=user.api_token) as ckan:
-		result = ckan.action.follow_dataset(id=package_name)
-		return {'ok': True,'message': 'success', 'result': result}
-
+# check if package bookmarked
 @packages_route.route('/bookmarked/<package_name>', methods=['GET'])
 def check_package_bookmarked(package_name):
 	token = request.headers.get('Authorization')
@@ -180,7 +209,29 @@ def check_package_bookmarked(package_name):
 	with ckan_connect(api_key=user.api_token) as ckan:
 		result = ckan.action.am_following_dataset(id=package_name)
 		return {'ok': True,'message': 'success', 'result': result, 'bookmarked': result}
+
+# create follow datasets (bookmarked)
+@packages_route.route('/bookmarked/<package_name>', methods=['POST'])
+def create_package_bookmarked(package_name):
+	token = request.headers.get('Authorization')
+	payload = request.json
 	
+	# print(token, payload)
+
+	if package_name is None:
+		package_name = payload['package_name']
+	if token is None:
+		return {'ok': False, 'message': 'token not provide'}
+
+	user = User(jwt_token=token)
+	with ckan_connect(api_key=user.api_token) as ckan:
+		try:
+			result = ckan.action.follow_dataset(id=package_name)
+			return {'ok': True,'message': 'success', 'result': result}
+		except:
+			return {'ok': False,'message': 'failed'}
+
+# Un-bookmarked
 @packages_route.route('/bookmarked/<package_name>/', methods=['DELETE'])
 def delete_package_bookmarked(package_name):
 	token = request.headers.get('Authorization')
@@ -188,8 +239,11 @@ def delete_package_bookmarked(package_name):
 		return {'ok': False, 'message': 'token not provide'}
 	user = User(jwt_token=token)
 	with ckan_connect(api_key=user.api_token) as ckan:
-		ckan.action.unfollow_dataset(id=package_name)
-		return {'ok': True,'message': 'success'}
+		try:
+			ckan.action.unfollow_dataset(id=package_name)
+			return {'ok': True,'message': 'success'}
+		except:
+			return {'ok': False,'message': 'failed', 'result': result}
 
 # datasets (packages) thumbnail
 @packages_route.route('/<package_id>/thumbnail', methods=['POST'])
