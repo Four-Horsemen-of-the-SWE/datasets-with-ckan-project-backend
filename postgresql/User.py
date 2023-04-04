@@ -27,6 +27,7 @@ class User(PostgreSQL):
 		self.sysadmin: bool
 		self.state: str
 		self.image: str
+		self.jwt_token: str
 		if jwt_token is not None:
 			self._verify_token(jwt_token)		
 
@@ -40,6 +41,7 @@ class User(PostgreSQL):
 		# if success set the user id
 		result = jwt.decode(token, self.secret, algorithms=["HS256"])
 		if result:
+			self.jwt_token = token
 			self.id = result['id']
 			# get a api_token from database
 			self._get_api_token()
@@ -102,6 +104,11 @@ class User(PostgreSQL):
 						'about': result[4],
 						'fullname': result[6],
 						'email': result[7],
-						'image_url': result[11]
+						'image_url': result[11],
+						'is_admin': result[8]
 					}
 					return result_as_dict
+
+	def is_admin(self):
+		user_details = self.get_user_details(self.jwt_token)
+		return user_details['is_admin'] == True

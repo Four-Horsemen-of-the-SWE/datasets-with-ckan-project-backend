@@ -22,7 +22,8 @@ class Thumbnail(User):
     with self.engine.connect() as connection:
       package_query_string = "SELECT id, creator_user_id FROM public.package WHERE id = '%s'" % package_id
       package_result = connection.execute(text(package_query_string)).mappings().one()
-      if package_result['creator_user_id'] == self.id:
+      # add admin checking here
+      if package_result['creator_user_id'] == self.id or self.is_admin():
         return True
       else:
         return False

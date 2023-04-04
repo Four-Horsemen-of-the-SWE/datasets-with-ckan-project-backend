@@ -5,6 +5,20 @@ from postgresql.User import User
 
 users_route = Blueprint('users_route', __name__)
 
+# check if user is admin
+@users_route.route('/is_admin', methods=['GET'])
+def check_if_user_is_admin():
+	jwt_token = request.headers.get('Authorization')
+	user = User(jwt_token=jwt_token)
+
+	with ckan_connect(api_key=user.api_token) as ckan:
+		try:
+			result = ckan.action.user_show(id=user.id)
+			is_admin = result['sysadmin'] == True
+			return {'ok': True, 'message': 'success', 'is_admin': is_admin}
+		except:
+			return  {'ok': False, 'message': 'failed'}
+
 # get all users
 @users_route.route('/', methods=['GET'])
 def get_users():
@@ -56,9 +70,9 @@ def login():
 # get a user details (using a ckanapi)
 @users_route.route('/<user_name>', methods=['GET'])
 def get_user_details(user_name):
-	token = request.headers.get('Authorization')
-	user = User(jwt_token=token)
-	with ckan_connect(api_key=user.api_token) as ckan:
+	# token = request.headers.get('Authorization')
+	# user = User(jwt_token=token)
+	with ckan_connect() as ckan:
 		result = ckan.action.user_show(id=user_name, include_datasets=True, include_num_followers=True)
 		return {'ok': True, 'message': 'success', 'result': result}
 

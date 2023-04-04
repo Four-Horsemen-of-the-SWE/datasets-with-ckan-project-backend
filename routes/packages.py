@@ -189,13 +189,34 @@ def get_number_of_packages():
 @packages_route.route('/search', methods=['GET'])
 def search_packages():
 	packages_name = request.args.get('q')
-	tags_name = request.args.get('tags')
+	tags = request.args.getlist('tags')
+	tag_query = '';
+
+	if len(tags):
+		# fq='tags:(ambatukam OR medicine OR amazon)'
+		tag_str = " OR ".join(f"{tag}" for tag in tags)
+		tag_query = f'tags:({tag_str})'
+	else:
+		tag_query = "*:*"
 
 	with ckan_connect() as ckan:
 		# if request come with query string
-		result = ckan.action.package_search(q=packages_name, fq=tags_name, include_private=False, rows=1000)
+		result = ckan.action.package_search(q=packages_name, fq=tag_query, include_private=False, rows=1000)
 		if(result['count'] > 0):
 			return {'ok': True, 'message': 'success', 'result': result['results']}
+		else:
+			return {'ok': False, 'message': 'not found'}
+
+# package search but it's auto complete
+@packages_route.route('/search/auto_complete', methods=['GET'])
+def search_packages_auto_complete():
+	package_name = request.args.get('q')
+
+	with ckan_connect() as ckan:
+		result = ckan.action.package_autocomplete(q=package_name, limit=10)
+
+		if result:
+			return {'ok': True, 'message': 'success', 'result': result}
 		else:
 			return {'ok': False, 'message': 'not found'}
 
