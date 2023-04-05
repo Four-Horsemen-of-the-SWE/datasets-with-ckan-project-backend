@@ -192,12 +192,16 @@ def search_packages():
 	tags = request.args.getlist('tags')
 	tag_query = '';
 
+	if packages_name is None or packages_name == 'null':
+		packages_name = "*:*"
 	if len(tags):
 		# fq='tags:(ambatukam OR medicine OR amazon)'
 		tag_str = " OR ".join(f"{tag}" for tag in tags)
 		tag_query = f'tags:({tag_str})'
 	else:
 		tag_query = "*:*"
+
+	print(packages_name, tag_query)
 
 	with ckan_connect() as ckan:
 		# if request come with query string
