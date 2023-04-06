@@ -240,8 +240,6 @@ def check_package_bookmarked(package_name):
 def create_package_bookmarked(package_name):
 	token = request.headers.get('Authorization')
 	payload = request.json
-	
-	# print(token, payload)
 
 	if package_name is None:
 		package_name = payload['package_name']
