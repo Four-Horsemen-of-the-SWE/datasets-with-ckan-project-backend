@@ -59,13 +59,17 @@ def delete_user(users_id):
 # login
 @users_route.route('/login', methods=['POST'])
 def login():
-	payload = request.json
-	user = User()
-	token = user.login(payload['name'], payload['password'])
-	if token:
-		return {'ok': True,'message': 'success', 'token': token}
-	else:
-		return {'ok': False,'message': 'failed to login'}
+	try:
+		payload = request.json
+		user = User()
+		response = user.login(payload['username'], payload['password'])
+		if response:
+			# 2,592,000,000 milliseconds = 30 days
+			return {'ok': True,'message': 'success', 'accessToken': response['accessToken'], 'expiresIn': 2592000000, 'user': response['user']}
+		else:
+			return {'ok': False,'message': 'failed to login'}
+	except:
+		return {'ok': False,'message': 'backend server failed'}
 
 # get a user details (using a ckanapi)
 @users_route.route('/<user_name>', methods=['GET'])
