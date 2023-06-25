@@ -18,8 +18,8 @@ datasets_route = Blueprint('datasets_route', __name__)
 def get_datasets():
 	with ckan_connect() as ckan:
 		result = []
-		datasets = ckan.action.current_dataset_list_with_resources(all_fields=True)
-		for dataset in datasetss:
+		datasets = ckan.action.current_package_list_with_resources(all_fields=True)
+		for dataset in datasets:
 			# if dataset is public
 			if dataset['private'] == False:
 				result.append({
@@ -46,7 +46,7 @@ def create_datasets():
 
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
-			result = ckan.action.dataset_create(**payload)
+			result = ckan.action.package_create(**payload)
 			return {'ok': True, 'message': 'success', 'result': result}
 		except CKANAPIError:
 			return {'ok': False, 'message': 'ckan api error'}
@@ -63,7 +63,7 @@ def update_dataset(dataset_name):
 
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
-			result = ckan.action.dataset_update(id=dataset_name, **payload)
+			result = ckan.action.package_update(id=dataset_name, **payload)
 			return {'ok': True, 'message': 'success', 'result': result}
 		except CKANAPIError:
 			return {'ok': False, 'message': 'ckan api error'}
@@ -81,7 +81,7 @@ def delete_dataset(dataset_name):
 
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
-			result = ckan.action.dataset_delete(id=dataset_name)
+			result = ckan.action.package_delete(id=dataset_name)
 			return {'ok': True, 'message': 'success', 'result': result}
 		except NotAuthorized:
 			return {'ok': False, 'message': 'access denied'}
@@ -106,8 +106,8 @@ def create_resource():
 	upload.save(file_path)
 
 	with ckan_connect(api_key=user.api_token) as ckan:
-		# result = ckan.action.resource_create(dataset_id=dataset_id, url=url, description=description, name=resource_name, upload=open(file_path, 'rb'))
-		result = ckan.action.resource_create(dataset_id=dataset_id, description=description, name=resource_name, upload=open(file_path, 'rb'))
+		# result = ckan.action.resource_create(package_id=dataset_id, url=url, description=description, name=resource_name, upload=open(file_path, 'rb'))
+		result = ckan.action.resource_create(package_id=dataset_id, description=description, name=resource_name, upload=open(file_path, 'rb'))
 		# if success, delete the temp file
 		if result is not None:
 			try:
@@ -170,7 +170,7 @@ def get_dataset_datails(dataset_name):
 	# user = User(jwt_token=token)
 	try:
 		with ckan_connect() as ckan:
-			result = ckan.action.dataset_show(id=dataset_name)
+			result = ckan.action.package_show(id=dataset_name)
 			if result:
 				return {'ok': True, 'message': 'success', 'result': result}
 			else:
@@ -182,7 +182,7 @@ def get_dataset_datails(dataset_name):
 @datasets_route.route('/number', methods=['GET'])
 def get_number_of_datasets():
 	with ckan_connect() as ckan:
-		result = ckan.action.dataset_list()
+		result = ckan.action.package_list()
 		return {'ok': True, 'message': 'success', 'number': len(result)}
 
 # datasets search
@@ -205,7 +205,7 @@ def search_datasets():
 
 	with ckan_connect() as ckan:
 		# if request come with query string
-		result = ckan.action.dataset_search(q=datasets_name, fq=tag_query, include_private=False, rows=1000)
+		result = ckan.action.package_search(q=datasets_name, fq=tag_query, include_private=False, rows=1000)
 		if(result['count'] > 0):
 			return {'ok': True, 'message': 'success', 'result': result['results']}
 		else:
@@ -217,7 +217,7 @@ def search_datasets_auto_complete():
 	dataset_name = request.args.get('q')
 
 	with ckan_connect() as ckan:
-		result = ckan.action.dataset_autocomplete(q=dataset_name, limit=10)
+		result = ckan.action.package_autocomplete(q=dataset_name, limit=10)
 
 		if result:
 			return {'ok': True, 'message': 'success', 'result': result}
@@ -232,7 +232,7 @@ def check_dataset_bookmarked(dataset_name):
 		return {'ok': False, 'message': 'token not provide'}
 	user = User(jwt_token=token)
 	with ckan_connect(api_key=user.api_token) as ckan:
-		result = ckan.action.am_following_dataset(id=dataset_name)
+		result = ckan.action.am_following_package(id=dataset_name)
 		return {'ok': True,'message': 'success', 'result': result, 'bookmarked': result}
 
 # create follow datasets (bookmarked)
@@ -249,7 +249,7 @@ def create_dataset_bookmarked(dataset_name):
 	user = User(jwt_token=token)
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
-			result = ckan.action.follow_dataset(id=dataset_name)
+			result = ckan.action.follow_package(id=dataset_name)
 			return {'ok': True,'message': 'success', 'result': result}
 		except:
 			return {'ok': False,'message': 'failed'}
@@ -263,7 +263,7 @@ def delete_dataset_bookmarked(dataset_name):
 	user = User(jwt_token=token)
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
-			ckan.action.unfollow_dataset(id=dataset_name)
+			ckan.action.unfollow_package(id=dataset_name)
 			return {'ok': True,'message': 'success'}
 		except:
 			return {'ok': False,'message': 'failed', 'result': result}

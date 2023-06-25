@@ -2,6 +2,7 @@ import sys, os
 from flask import Blueprint, request
 from ckan.ckan_connect import ckan_connect
 from postgresql.User import User
+from ckanapi import ValidationError, SearchError
 
 users_route = Blueprint('users_route', __name__)
 
@@ -33,6 +34,9 @@ def get_users():
 def create_users():
 	payload = request.json
 	with ckan_connect() as ckan:
+		# transform name to lowercase
+		payload['name'] = payload['name'].lower()
+
 		try:
 			user = ckan.action.user_create(**payload)
 			# if user was created, now create their apy token
@@ -40,8 +44,8 @@ def create_users():
 				token_payload = {'name': 'ckan_private_api_token', 'user': payload['name']}
 				ckan.action.api_token_create(**token_payload)
 			return {'ok': True, 'message': 'success', 'user': user}
-		except :
-			return {'ok': False, 'message': 'Username already exists'}
+		except ValidationError:
+			return {'ok': False, 'message': 'ValidationError in backend'}
 
 # delete users
 @users_route.route('/<users_id>', methods=['DELETE'])
@@ -67,7 +71,7 @@ def login():
 			# 2,592,000,000 milliseconds = 30 days
 			return {'ok': True,'message': 'success', 'accessToken': response['accessToken'], 'expiresIn': 2592000000, 'user': response['user']}
 		else:
-			return {'ok': False,'message': 'failed to login'}
+			return {'ok': False,'message': 'invalid username or password'}
 	except:
 		return {'ok': False,'message': 'backend server failed'}
 
@@ -80,13 +84,21 @@ def get_user_details(user_name):
 		result = ckan.action.user_show(id=user_name, include_datasets=True, include_num_followers=True)
 		return {'ok': True, 'message': 'success', 'result': result}
 
-# get a package that user collab
-@users_route.route('/packages', methods=['GET'])
-def get_user_packages():
-	token = request.headers.get('Authorization')
-	user = User(jwt_token=token)
-	with ckan_connect() as ckan:
-		return ckan.action.package_collaborator_list_for_user(id=user.id)
+# get a package that user created
+@users_route.route('/datasets', methods=['GET'])
+def get_user_datasets():
+	# try:
+		token = request.headers.get('Authorization')		
+		user = User(jwt_token=token)
+		
+		with ckan_connect() as ckan:
+			# return ckan.action.package_collaborator_list_for_user(id=user.id)
+			datasets = ckan.action.package_search(fq=f'creator_user_id:{user.id}')
+			return {'ok': True, 'message': 'success', 'count': datasets['count'], 'result': datasets['results']}
+	# except SearchError:
+		# return {'ok': False, 'message': 'token not provided. user_is is empty or null'}
+	# except:
+		# return {'ok': False, 'message': 'token not provided'}
 
 # get a datasets (aka datasets) that user bookmarked
 @users_route.route('/bookmarked', methods=['GET'])
