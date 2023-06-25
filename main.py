@@ -2,7 +2,7 @@ import os
 from flask import Flask
 from flask_cors import CORS
 from routes.users import users_route
-from routes.packages import packages_route
+from routes.datasets import datasets_route
 from routes.tags import tags_route
 from routes.organizations import organizations_route
 from routes.discussion import discussion_route
@@ -29,7 +29,7 @@ CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers='Authorization')
 
 # register the blueprints
 app.register_blueprint(users_route, url_prefix=f'{API_ENDPOINT}/users')
-app.register_blueprint(packages_route, url_prefix=f'{API_ENDPOINT}/packages')
+app.register_blueprint(datasets_route, url_prefix=f'{API_ENDPOINT}/datasets')
 app.register_blueprint(tags_route, url_prefix=f'{API_ENDPOINT}/tags')
 app.register_blueprint(organizations_route, url_prefix=f'{API_ENDPOINT}/organizations')
 app.register_blueprint(discussion_route, url_prefix=f'{API_ENDPOINT}/discussion')

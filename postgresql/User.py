@@ -84,8 +84,11 @@ class User(PostgreSQL):
 					self.fullname = result[6]
 					# generate a jwt token or something
 					token = jwt.encode({"id": self.id, "name": self.name, "fullname": self.fullname}, self.secret, algorithm="HS256")
-					# then, return token to client
-					return token
+					# then, return token and user detail to client
+					return {
+						'accessToken': token,
+						'user': self.get_user_details(token)
+					}
 			except NoResultFound:
 				return False
 
