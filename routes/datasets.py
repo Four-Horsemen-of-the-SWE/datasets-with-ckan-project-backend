@@ -164,13 +164,15 @@ def delete_resource(resource_id):
 		return {'ok': True, 'message': 'delete success'}
 
 # get dataset deails, (giving a name to api, then return that dataset)
+# since 27/6/2023 @JCSNP. this function will return a thumbnails
 @datasets_route.route('/<dataset_name>', methods=['GET'])
 def get_dataset_datails(dataset_name):
-	# token = request.headers.get('Authorization')
-	# user = User(jwt_token=token)
 	try:
 		with ckan_connect() as ckan:
 			result = ckan.action.package_show(id=dataset_name)
+			thumbnail = Thumbnail().get_thumbnail(result.id)
+			# insert thumbnail into result
+			result['thumbnail'] = thumbnail.result
 			if result:
 				return {'ok': True, 'message': 'success', 'result': result}
 			else:

@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 # load .env file
 load_dotenv()
+API_HOST = os.getenv('API_HOST')
 API_ENDPOINT = os.getenv('API_ENDPOINT')
 
 # Cors
@@ -37,4 +38,4 @@ app.register_blueprint(groups_route, url_prefix=f'{API_ENDPOINT}/groups')
 app.register_blueprint(licenses_route, url_prefix=f'{API_ENDPOINT}/licenses')
 
 if __name__ == '__main__':
-	app.run(host='127.0.0.1', port=5001, debug=True,)
+	app.run(host=API_HOST, port=5001, debug=True,)
