@@ -14,6 +14,7 @@ import io
 datasets_route = Blueprint('datasets_route', __name__)
 
 # get all datasets, (only necessary information)
+# this function should called in homepage
 @datasets_route.route('/', methods=['GET'])
 def get_datasets():
 	with ckan_connect() as ckan:
@@ -22,6 +23,7 @@ def get_datasets():
 		for dataset in datasets:
 			# if dataset is public
 			if dataset['private'] == False:
+				thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 				result.append({
 					'author': dataset['author'],
 					'metadata_created': dataset['metadata_created'],
@@ -32,7 +34,8 @@ def get_datasets():
 					'id': dataset['id'],
 					'tags': dataset['tags'],
 					'license_title': dataset['license_title'],
-					'private': dataset['private']
+					'private': dataset['private'],
+					'thumbnail': thumbnail['result']
 				})
 		return {'ok': True, 'message': 'success', 'result': result}
 
