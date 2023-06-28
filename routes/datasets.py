@@ -170,13 +170,13 @@ def get_dataset_datails(dataset_name):
 	try:
 		with ckan_connect() as ckan:
 			result = ckan.action.package_show(id=dataset_name)
-			thumbnail = Thumbnail().get_thumbnail(result.id)
+			thumbnail = Thumbnail().get_thumbnail(result['id'])
+
 			# insert thumbnail into result
-			result['thumbnail'] = thumbnail.result
-			if result:
-				return {'ok': True, 'message': 'success', 'result': result}
-			else:
-				return {'ok': False, 'message': 'dataset not found'}
+			result['thumbnail'] = thumbnail['result']
+			return {'ok': True, 'message': 'success', 'result': result}
+	except NotFound:
+		return {'ok': False, 'message': 'datasets not found'}
 	except:
 		return {'ok': False, 'message': 'flask api error'}
 

@@ -50,7 +50,6 @@ def create_users():
 # delete users
 @users_route.route('/<users_id>', methods=['DELETE'])
 def delete_user(users_id):
-	# api_key = request.headers.get('Authorization')
 	'''
 		@p, mangkorn
 		in delete method we gonna use a admin's api-key
@@ -65,8 +64,18 @@ def delete_user(users_id):
 def login():
 	try:
 		payload = request.json
+
+		# if username or password not provided
+		if 'username' not in payload or 'password' not in payload:
+			return {'ok': False, 'message': 'username or password is not provided'}
+		
 		user = User()
 		response = user.login(payload['username'], payload['password'])
+
+		# if username not lowercase
+		if not payload['username'].islower():
+			return {'ok': False, 'message': 'username must be all lowercase.'}
+
 		if response:
 			# 2,592,000,000 milliseconds = 30 days
 			return {'ok': True,'message': 'success', 'accessToken': response['accessToken'], 'expiresIn': 2592000000, 'user': response['user']}
@@ -78,8 +87,6 @@ def login():
 # get a user details (using a ckanapi)
 @users_route.route('/<user_name>', methods=['GET'])
 def get_user_details(user_name):
-	# token = request.headers.get('Authorization')
-	# user = User(jwt_token=token)
 	with ckan_connect() as ckan:
 		result = ckan.action.user_show(id=user_name, include_datasets=True, include_num_followers=True)
 		return {'ok': True, 'message': 'success', 'result': result}
@@ -100,19 +107,25 @@ def get_user_datasets():
 	# except:
 		# return {'ok': False, 'message': 'token not provided'}
 
-# get a datasets (aka datasets) that user bookmarked
+# get a datasets that user bookmarked
 @users_route.route('/bookmarked', methods=['GET'])
 def get_users_bookmarked():
-	token = request.headers.get('Authorization')
-	user = User(jwt_token=token)
-	with ckan_connect() as ckan:
-		result = ckan.action.dataset_followee_list(id=user.id)
-		return result
+	try:
+		token = request.headers.get('Authorization')
+		user = User(jwt_token=token)
+		with ckan_connect() as ckan:
+			result = ckan.action.dataset_followee_list(id=user.id)
+			return result
+	except:
+		return {'ok': False, 'message': 'token not provided'}
 	
 # get a list of user's organization
 @users_route.route('/organizations', methods=['GET'])
 def get_user_organizations():
-	token = request.headers.get('Authorization')
-	user = User(jwt_token=token)
-	with ckan_connect() as ckan:
-		return ckan.action.organization_list_for_user(id=user.id)
+	try:
+		token = request.headers.get('Authorization')
+		user = User(jwt_token=token)
+		with ckan_connect() as ckan:
+			return ckan.action.organization_list_for_user(id=user.id)
+	except:
+		return {'ok': False, 'message': 'token not provided'}
