@@ -73,19 +73,6 @@ class Thumbnail(User):
           connection.commit()
           return {'ok': True, 'message': 'create success'}
 
-  @staticmethod
-  def get_thumbnail(package_id:str = None):
-    with Thumbnail.engine.connect() as connection:
-      # get image data from database
-      try:
-        query_string = "SELECT id, package_id, created, image_data FROM public.package_thumbnail WHERE package_id = '%s'" % package_id
-        result = connection.execute(text(query_string)).mappings().one()
-        image = (result['image_data']).tobytes().decode('utf-8')
-        return {'ok': True, 'result': image}
-      except:
-        return {'ok': False, 'result': None}
-
-"""
   def get_thumbnail(self, package_id:str = None):
     with self.engine.connect() as connection:
       # get image data from database
@@ -95,5 +82,4 @@ class Thumbnail(User):
         image = (result['image_data']).tobytes().decode('utf-8')
         return {'ok': True, 'result': image}
       except:
-        return {'ok': False}
-"""
+        return {'ok': False, 'result': None}

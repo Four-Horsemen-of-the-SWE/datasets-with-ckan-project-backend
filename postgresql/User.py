@@ -39,14 +39,17 @@ class User(PostgreSQL):
 		
 	def _verify_token(self, token:str = None):
 		# if success set the user id
-		result = jwt.decode(token, self.secret, algorithms=["HS256"])
-		if result:
-			self.jwt_token = token
-			self.id = result['id']
-			# get a api_token from database
-			self._get_api_token()
-			return True
-		else:
+		try:
+			result = jwt.decode(token, self.secret, algorithms=["HS256"])
+			if result:
+				self.jwt_token = token
+				self.id = result['id']
+				# get a api_token from database
+				self._get_api_token()
+				return True
+			else:
+				return False
+		except jwt.exceptions.DecodeError:
 			return False
 
 
@@ -60,10 +63,10 @@ class User(PostgreSQL):
 				result = connection.execute(text(query_string)).one()
 				token = jwt.encode({"jti": result[0], "iat": 1679160636}, self.token_secret, algorithm="HS256")
 				self.api_token = token
-				return token				
+				return token	
 			except:
-				print('user don\'t have api token')
-				return False
+				# print('user don\'t have api token')
+				return None
 
 	def login(self, name, password):
 		with self.engine.connect() as connection:
