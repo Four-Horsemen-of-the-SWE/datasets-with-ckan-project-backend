@@ -107,15 +107,15 @@ def get_user_datasets():
 	# except:
 		# return {'ok': False, 'message': 'token not provided'}
 
-# get a datasets that user bookmarked
-@users_route.route('/bookmarked', methods=['GET'])
+# get a datasets that user bookmark
+@users_route.route('/bookmark', methods=['GET'])
 def get_users_bookmarked():
 	try:
 		token = request.headers.get('Authorization')
 		user = User(jwt_token=token)
 		with ckan_connect() as ckan:
 			result = ckan.action.dataset_followee_list(id=user.id)
-			return result
+			return {'ok': True, 'message': 'success', 'result': result}
 	except:
 		return {'ok': False, 'message': 'token not provided'}
 	

@@ -10,6 +10,7 @@ from postgresql.Thumbnail import Thumbnail
 import tempfile
 import base64
 import io
+import uuid
 
 datasets_route = Blueprint('datasets_route', __name__)
 
@@ -38,6 +39,23 @@ def get_datasets():
 					'thumbnail': thumbnail['result']
 				})
 		return {'ok': True, 'message': 'success', 'result': result}
+
+# get dataset deails, (giving a name to api, then return that dataset)
+# since 27/6/2023 @JCSNP. this function will return a thumbnails
+@datasets_route.route('/<dataset_name>', methods=['GET'])
+def get_dataset_datails(dataset_name):
+	try:
+		with ckan_connect() as ckan:
+			result = ckan.action.package_show(id=dataset_name)
+			thumbnail = Thumbnail().get_thumbnail(result['id'])
+
+			# insert thumbnail into result
+			result['thumbnail'] = thumbnail['result']
+			return {'ok': True, 'message': 'success', 'result': result}
+	except NotFound:
+		return {'ok': False, 'message': 'datasets not found'}
+	except:
+		return {'ok': False, 'message': 'flask api error'}
 
 # create dataset
 @datasets_route.route('/', methods=['POST'])
@@ -92,34 +110,41 @@ def delete_dataset(dataset_name):
 			return {'ok': False, 'message': f'dataset = {dataset_name} not found'}
 
 # create new resource
-@datasets_route.route('/resources', methods=['POST'])
+@datasets_route.route('/<dataset_id>/resources', methods=['POST'])
 @cross_origin()
-def create_resource():
+def create_resource(dataset_id):
 	token = request.headers.get('Authorization')
 	user = User(jwt_token=token)
 
-	dataset_id = request.form['dataset_id']
-	description = request.form['description']
-	resource_name = request.form['name']
-	upload = request.files['upload']
+	if 'files' not in request.files:
+		return {'ok': False, 'message': 'file not provided'}
 
-	# save the file into temp folder
-	filename = upload.filename
-	file_path = os.path.join(os.path.abspath('file_upload_temp'), filename)
-	upload.save(file_path)
-
+	files = request.files.getlist('files')
 	with ckan_connect(api_key=user.api_token) as ckan:
-		# result = ckan.action.resource_create(package_id=dataset_id, url=url, description=description, name=resource_name, upload=open(file_path, 'rb'))
-		result = ckan.action.resource_create(package_id=dataset_id, description=description, name=resource_name, upload=open(file_path, 'rb'))
-		# if success, delete the temp file
-		if result is not None:
-			try:
-				os.remove(file_path)
-				return {'ok': True, 'message': 'upload resource success', 'result': result}
-			except OSError as e:
-				print(f'Error removing file: {e.filename} - {e.strerror}')
-		else:
-			return {'ok': False, 'message': 'failed to upload resource'}
+	    for file in files:
+	        filename = file.filename
+	        unique_filename = f'{str(uuid.uuid4())[:4]}_{filename}'
+	        file_path = os.path.join(os.path.abspath('upload'), unique_filename)
+        	file.save(file_path)
+
+	        payload = {
+	            'package_id': dataset_id,
+	            'url': request.form.get('url', ''),
+	            'description': request.form.get('description', ''),
+	            'format': os.path.splitext(filename)[1][1:].lower(),
+	            'name': filename,
+	            'mimetype': file.mimetype,
+	            'upload': open(file_path, 'rb')
+	        }
+
+	        # Save into CKAN
+	        result = ckan.action.resource_create(**payload)
+	        if result is not None:
+            # Remove the file after successful upload
+	            os.remove(file_path)
+	            return {'ok': True, 'message': 'Upload resource success', 'result': result}
+	        else:
+	            return {'ok': False, 'message': 'Failed to upload resource'}
 
 # update resource
 @datasets_route.route('/resources/<resource_id>', methods=['PUT'])
@@ -165,23 +190,6 @@ def delete_resource(resource_id):
 	with ckan_connect(api_key=user.api_token) as ckan:
 		result = ckan.action.resource_delete(id=resource_id)
 		return {'ok': True, 'message': 'delete success'}
-
-# get dataset deails, (giving a name to api, then return that dataset)
-# since 27/6/2023 @JCSNP. this function will return a thumbnails
-@datasets_route.route('/<dataset_name>', methods=['GET'])
-def get_dataset_datails(dataset_name):
-	try:
-		with ckan_connect() as ckan:
-			result = ckan.action.package_show(id=dataset_name)
-			thumbnail = Thumbnail().get_thumbnail(result['id'])
-
-			# insert thumbnail into result
-			result['thumbnail'] = thumbnail['result']
-			return {'ok': True, 'message': 'success', 'result': result}
-	except NotFound:
-		return {'ok': False, 'message': 'datasets not found'}
-	except:
-		return {'ok': False, 'message': 'flask api error'}
 
 # get a number of datasets
 @datasets_route.route('/number', methods=['GET'])
@@ -230,7 +238,7 @@ def search_datasets_auto_complete():
 			return {'ok': False, 'message': 'not found'}
 
 # check if dataset bookmarked
-@datasets_route.route('/bookmarked/<dataset_name>', methods=['GET'])
+@datasets_route.route('/bookmark/<dataset_name>', methods=['GET'])
 def check_dataset_bookmarked(dataset_name):
 	token = request.headers.get('Authorization')
 	if token is None:
@@ -240,11 +248,11 @@ def check_dataset_bookmarked(dataset_name):
 		result = ckan.action.am_following_package(id=dataset_name)
 		return {'ok': True,'message': 'success', 'result': result, 'bookmarked': result}
 
-# create follow datasets (bookmarked)
-@datasets_route.route('/bookmarked/<dataset_name>', methods=['POST'])
+# bookmark datasets
+@datasets_route.route('/<dataset_name>/bookmark', methods=['POST'])
 def create_dataset_bookmarked(dataset_name):
 	token = request.headers.get('Authorization')
-	payload = request.json
+	# payload = request.json
 
 	if dataset_name is None:
 		dataset_name = payload['dataset_name']
@@ -254,13 +262,13 @@ def create_dataset_bookmarked(dataset_name):
 	user = User(jwt_token=token)
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
-			result = ckan.action.follow_package(id=dataset_name)
+			result = ckan.action.follow_dataset(id=dataset_name)
 			return {'ok': True,'message': 'success', 'result': result}
 		except:
 			return {'ok': False,'message': 'failed'}
 
 # Un-bookmarked
-@datasets_route.route('/bookmarked/<dataset_name>/', methods=['DELETE'])
+@datasets_route.route('/bookmark/<dataset_name>/', methods=['DELETE'])
 def delete_dataset_bookmarked(dataset_name):
 	token = request.headers.get('Authorization')
 	if token is None:
@@ -273,16 +281,16 @@ def delete_dataset_bookmarked(dataset_name):
 		except:
 			return {'ok': False,'message': 'failed', 'result': result}
 
-# datasets (datasets) thumbnail
+# create datasets thumbnail
 @datasets_route.route('/<dataset_id>/thumbnail', methods=['POST'])
 def create_datasets_thumbnail(dataset_id):
 	token = request.headers.get('Authorization')
-	image_data = request.files.get('thumbnail_image').read()
+	image_data = request.files.get('thumbnail_image')
 
-	new_thumbnail = Thumbnail(jwt_token=token)
-	return new_thumbnail.create_thumbnail(dataset_id, image_data)
+	thumbnail = Thumbnail(jwt_token=token).create_thumbnail(dataset_id, image_data)
+	return thumbnail
 
-# get datasets (dataset) thumbnail -> return as base64
+# get datasets (dataset) thumbnail
 @datasets_route.route('/<dataset_id>/thumbnail', methods=['GET'])
 def get_dataset_thumbnail(dataset_id):
 	thumbnail = Thumbnail()
