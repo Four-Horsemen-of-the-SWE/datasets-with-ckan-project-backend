@@ -28,6 +28,11 @@ app = Flask(__name__)
 app.config['CORS_HEADERS'] = 'Content-Type'
 CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers='Authorization')
 
+# return to client when they entering 127.0.0.1:5001.
+@app.route('/')
+def hello():
+  return {'ok': True, 'message': 'Hello there.'}, 200
+
 # register the blueprints
 app.register_blueprint(users_route, url_prefix=f'{API_ENDPOINT}/users')
 app.register_blueprint(datasets_route, url_prefix=f'{API_ENDPOINT}/datasets')
@@ -38,4 +43,4 @@ app.register_blueprint(groups_route, url_prefix=f'{API_ENDPOINT}/groups')
 app.register_blueprint(licenses_route, url_prefix=f'{API_ENDPOINT}/licenses')
 
 if __name__ == '__main__':
-	app.run(host=API_HOST, port=5001, debug=True,)
+	app.run(host='0.0.0.0', port=5001, debug=True)

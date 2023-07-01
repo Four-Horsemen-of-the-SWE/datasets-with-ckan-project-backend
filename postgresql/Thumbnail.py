@@ -9,8 +9,11 @@ from datetime import datetime
 import psycopg2
 import base64
 import uuid
+from datetime import datetime
 # load env file
 load_dotenv()
+
+THUMBNAIL_FOLDER = os.getenv('THUMBNAIL_FOLDER')
 
 class Thumbnail(User):
   ALLOWED_EXTENSIONS:set = set(['png', 'jpg', 'jpeg', 'gif'])
@@ -51,35 +54,31 @@ class Thumbnail(User):
           connection.commit()
           return {'ok': True, 'message': 'update success'}
 
-  # i coded that u can use create_thumbnail to update and create thumbnail, this useful if you not sure about your thumbnail @jcsnp
-  def create_thumbnail(self, package_id:str = None, image:any = None):
+  def create_thumbnail(self, package_id:str = None, file:any = None):
     if self._check_authorization(package_id):
-      image_bytes = base64.b64encode(image)
-      if self._check_thumbnail_exist(package_id):
+      # move image into folder
+      file.filename = package_id + '_datasets-thumbnail_' + datetime.now().strftime('%Y-%m-%d-%H-%M-%S') + os.path.splitext(file.filename)[1]
+      file_path = os.path.join(THUMBNAIL_FOLDER, file.filename)
+      
+      # save into custom folder and save into database
+      try:
+        file.save(file_path)
         with self.engine.connect() as connection:
-          # now store into databse
-          query_string = text("UPDATE public.package_thumbnail SET image_data=:image_bytes WHERE package_id = :package_id")
-          # query_string = text("INSERT INTO public.package_thumbnail(id, package_id, image_data) VALUES (:id, :package_id, :image_bytes)")
-
-          connection.execute(query_string.bindparams(package_id=package_id, image_bytes=image_bytes))
+          query_string = text("INSERT INTO public.package_thumbnail(id, package_id, file_name) VALUES (:id, :package_id, :file_name)")
+          connection.execute(query_string.bindparams(id=uuid.uuid4(), package_id=package_id, file_name=file.filename))
           connection.commit()
-          return {'ok': True, 'message': 'update success'}
-      else:
-        with self.engine.connect() as connection:
-          # now store into databse
-          query_string = text("INSERT INTO public.package_thumbnail(id, package_id, image_data) VALUES (:id, :package_id, :image_bytes)")
+          return {'ok': True, 'message': 'created success'}
 
-          connection.execute(query_string.bindparams(id=uuid.uuid4(), package_id=package_id, image_bytes=image_bytes))
-          connection.commit()
-          return {'ok': True, 'message': 'create success'}
+      except:
+        return {'ok': False, 'message': 'failed to create'}
 
   def get_thumbnail(self, package_id:str = None):
     with self.engine.connect() as connection:
       # get image data from database
       try:
-        query_string = "SELECT id, package_id, created, image_data FROM public.package_thumbnail WHERE package_id = '%s'" % package_id
+        query_string = "SELECT id, package_id, created, file_name FROM public.package_thumbnail WHERE package_id = '%s' ORDER BY created DESC LIMIT 1" % package_id
         result = connection.execute(text(query_string)).mappings().one()
-        image = (result['image_data']).tobytes().decode('utf-8')
+        image = (result['file_name'])
         return {'ok': True, 'result': image}
       except:
         return {'ok': False, 'result': None}

@@ -65,6 +65,9 @@ def create_datasets():
 	payload = request.json
 	user = User(jwt_token=token)
 
+	if 'resouces' in payload:
+		payload.json.getlist('files')
+
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
 			result = ckan.action.package_create(**payload)
@@ -116,12 +119,12 @@ def create_resource(dataset_id):
 	token = request.headers.get('Authorization')
 	user = User(jwt_token=token)
 
-	if 'files' not in request.files:
+	if 'resources' not in request.files:
 		return {'ok': False, 'message': 'file not provided'}
 
-	files = request.files.getlist('files')
+	resources = request.files.getlist('resources')
 	with ckan_connect(api_key=user.api_token) as ckan:
-	    for file in files:
+	    for file in resources:
 	        filename = file.filename
 	        unique_filename = f'{str(uuid.uuid4())[:4]}_{filename}'
 	        file_path = os.path.join(os.path.abspath('upload'), unique_filename)
