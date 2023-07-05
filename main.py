@@ -38,7 +38,7 @@ app.register_blueprint(users_route, url_prefix=f'{API_ENDPOINT}/users')
 app.register_blueprint(datasets_route, url_prefix=f'{API_ENDPOINT}/datasets')
 app.register_blueprint(tags_route, url_prefix=f'{API_ENDPOINT}/tags')
 app.register_blueprint(organizations_route, url_prefix=f'{API_ENDPOINT}/organizations')
-app.register_blueprint(discussion_route, url_prefix=f'{API_ENDPOINT}/discussion')
+app.register_blueprint(discussion_route, url_prefix=f'{API_ENDPOINT}/discussions')
 app.register_blueprint(groups_route, url_prefix=f'{API_ENDPOINT}/groups')
 app.register_blueprint(licenses_route, url_prefix=f'{API_ENDPOINT}/licenses')
 
