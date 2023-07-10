@@ -42,16 +42,38 @@ def get_datasets():
 
 # get dataset deails, (giving a name to api, then return that dataset)
 # since 27/6/2023 @JCSNP. this function will return a thumbnails
+# use in ViewDatasets page
 @datasets_route.route('/<dataset_name>', methods=['GET'])
 def get_dataset_datails(dataset_name):
+	token = request.headers.get('Authorization')
+	user_id = ''
 	try:
-		with ckan_connect() as ckan:
+		user = User(jwt_token=token)
+		if user.api_token is not None or user.api_token != '':
+			user_id = user.api_token
+		else: None
+	except:
+		pass
+
+	try:
+		with ckan_connect(user_id) as ckan:
 			result = ckan.action.package_show(id=dataset_name)
+
+			# get thumbnail
 			thumbnail = Thumbnail().get_thumbnail(result['id'])
 
 			# insert thumbnail into result
 			result['thumbnail'] = thumbnail['result']
+
+			# check if datasets bookmarked
+			try:
+				isBookmark = ckan.action.am_following_dataset(id=dataset_name)
+				result['is_bookmark'] = isBookmark
+			except:
+				pass
+
 			return {'ok': True, 'message': 'success', 'result': result}
+			
 	except NotFound:
 		return {'ok': False, 'message': 'datasets not found'}
 	except:
@@ -85,16 +107,21 @@ def update_dataset(dataset_name):
 	user = User(jwt_token=token)
 	payload = request.json
 
+	if 'name' not in payload:
+		payload['name'] = payload['title'].lower().replace(' ', '-')
+
 	with ckan_connect(api_key=user.api_token) as ckan:
-		try:
-			result = ckan.action.package_update(id=dataset_name, **payload)
-			return {'ok': True, 'message': 'success', 'result': result}
+		# try:
+		result = ckan.action.package_patch(id=dataset_name, **payload)
+		return {'ok': True, 'message': 'success', 'result': result}
+		'''
 		except CKANAPIError:
 			return {'ok': False, 'message': 'ckan api error'}
 		except NotAuthorized:
 			return {'ok': False, 'message': 'access denied'}
 		except NotFound:
 			return {'ok': False, 'message': f'dataset = {dataset_name} not found'}
+		'''
 
 # delete dataset
 @datasets_route.route('/<dataset_name>', methods=['DELETE'])
@@ -248,7 +275,7 @@ def check_dataset_bookmarked(dataset_name):
 		return {'ok': False, 'message': 'token not provide'}
 	user = User(jwt_token=token)
 	with ckan_connect(api_key=user.api_token) as ckan:
-		result = ckan.action.am_following_package(id=dataset_name)
+		result = ckan.action.am_following_dataset(id=dataset_name)
 		return {'ok': True,'message': 'success', 'result': result, 'bookmarked': result}
 
 # bookmark datasets
@@ -279,7 +306,7 @@ def delete_dataset_bookmarked(dataset_name):
 	user = User(jwt_token=token)
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
-			ckan.action.unfollow_package(id=dataset_name)
+			ckan.action.unfollow_dataset(id=dataset_name)
 			return {'ok': True,'message': 'success'}
 		except:
 			return {'ok': False,'message': 'failed', 'result': result}
