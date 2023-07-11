@@ -20,7 +20,7 @@ datasets_route = Blueprint('datasets_route', __name__)
 def get_datasets():
 	with ckan_connect() as ckan:
 		result = []
-		datasets = ckan.action.current_package_list_with_resources(all_fields=True)
+		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=100)
 		for dataset in datasets:
 			# if dataset is public
 			if dataset['private'] == False:
@@ -91,12 +91,12 @@ def create_datasets():
 		payload.json.getlist('files')
 
 	with ckan_connect(api_key=user.api_token) as ckan:
-		try:
+		# try:
 			result = ckan.action.package_create(**payload)
 			return {'ok': True, 'message': 'success', 'result': result}
-		except CKANAPIError:
+		# except CKANAPIError:
 			return {'ok': False, 'message': 'ckan api error'}
-		except:
+		# except:
 			return {'ok': False, 'message': 'api server error'}
 
 # update dataset
