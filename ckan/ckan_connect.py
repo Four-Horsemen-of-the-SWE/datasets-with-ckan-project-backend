@@ -9,6 +9,10 @@ CKAN_ADMIN_API = os.getenv('CKAN_ADMIN_API')
 
 def ckan_connect(api_key: str = CKAN_ADMIN_API) -> any:
 	try:
-		return RemoteCKAN(CKAN_URL, api_key)
+		# this mean we already have api key
+		if api_key is not None or api_key != '':
+			return RemoteCKAN(CKAN_URL, api_key)
+		else:
+			return RemoteCKAN(CKAN_ADMIN_API, api_key)
 	except:
 		pass

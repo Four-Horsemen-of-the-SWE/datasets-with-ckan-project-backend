@@ -87,9 +87,6 @@ def create_datasets():
 	payload = request.json
 	user = User(jwt_token=token)
 
-	if 'resouces' in payload:
-		payload.json.getlist('files')
-
 	with ckan_connect(api_key=user.api_token) as ckan:
 		# try:
 			result = ckan.action.package_create(**payload)
@@ -143,38 +140,43 @@ def delete_dataset(dataset_name):
 @datasets_route.route('/<dataset_id>/resources', methods=['POST'])
 @cross_origin()
 def create_resource(dataset_id):
-	token = request.headers.get('Authorization')
-	user = User(jwt_token=token)
+    token = request.headers.get('Authorization')
+    user = User(jwt_token=token)
 
-	if 'resources' not in request.files:
-		return {'ok': False, 'message': 'file not provided'}
+    if 'resources' not in request.files:
+        return {'ok': False, 'message': 'file not provided'}
 
-	resources = request.files.getlist('resources')
-	with ckan_connect(api_key=user.api_token) as ckan:
-	    for file in resources:
-	        filename = file.filename
-	        unique_filename = f'{str(uuid.uuid4())[:4]}_{filename}'
-	        file_path = os.path.join(os.path.abspath('upload'), unique_filename)
-        	file.save(file_path)
+    resources = request.files.getlist('resources')
+    results = []
 
-	        payload = {
-	            'package_id': dataset_id,
-	            'url': request.form.get('url', ''),
-	            'description': request.form.get('description', ''),
-	            'format': os.path.splitext(filename)[1][1:].lower(),
-	            'name': filename,
-	            'mimetype': file.mimetype,
-	            'upload': open(file_path, 'rb')
-	        }
+    with ckan_connect(api_key=user.api_token) as ckan:
+        for file in resources:
+            filename = file.filename
+            unique_filename = f'{str(uuid.uuid4())[:4]}_{filename}'
+            file_path = os.path.join(os.path.abspath('upload'), unique_filename)
+            file.save(file_path)
 
-	        # Save into CKAN
-	        result = ckan.action.resource_create(**payload)
-	        if result is not None:
-            # Remove the file after successful upload
-	            os.remove(file_path)
-	            return {'ok': True, 'message': 'Upload resource success', 'result': result}
-	        else:
-	            return {'ok': False, 'message': 'Failed to upload resource'}
+            payload = {
+                'package_id': dataset_id,
+                'url': request.form.get('url', ''),
+                'description': request.form.get('description', ''),
+                'format': os.path.splitext(filename)[1][1:].lower(),
+                'name': filename,
+                'mimetype': file.mimetype,
+                'upload': open(file_path, 'rb')
+            }
+
+            # Save into CKAN
+            result = ckan.action.resource_create(**payload)
+            if result is not None:
+                # Remove the file after successful upload
+                os.remove(file_path)
+                results.append(result)
+            else:
+                return {'ok': False, 'message': 'Failed to upload resource'}
+
+    return {'ok': True, 'message': 'Upload resource success', 'results': results}
+
 
 # update resource
 @datasets_route.route('/resources/<resource_id>', methods=['PUT'])
@@ -279,11 +281,9 @@ def check_dataset_bookmarked(dataset_name):
 		return {'ok': True,'message': 'success', 'result': result, 'bookmarked': result}
 
 # bookmark datasets
-@datasets_route.route('/<dataset_name>/bookmark', methods=['POST'])
+@datasets_route.route('/<dataset_name>/bookmark/', methods=['POST'])
 def create_dataset_bookmarked(dataset_name):
 	token = request.headers.get('Authorization')
-	# payload = request.json
-
 	if dataset_name is None:
 		dataset_name = payload['dataset_name']
 	if token is None:
@@ -298,7 +298,7 @@ def create_dataset_bookmarked(dataset_name):
 			return {'ok': False,'message': 'failed'}
 
 # Un-bookmarked
-@datasets_route.route('/bookmark/<dataset_name>/', methods=['DELETE'])
+@datasets_route.route('/<dataset_name>/bookmark', methods=['DELETE'])
 def delete_dataset_bookmarked(dataset_name):
 	token = request.headers.get('Authorization')
 	if token is None:

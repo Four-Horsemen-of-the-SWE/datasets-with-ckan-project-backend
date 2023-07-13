@@ -63,18 +63,18 @@ class Thumbnail(User):
       file_path = os.path.join(THUMBNAIL_FOLDER, file.filename)
       
       # save into custom folder and save into database
-      # try:
-      file.save(file_path)
-      with self.engine.connect() as connection:
-        query_string = text("INSERT INTO public.package_thumbnail(id, package_id, file_name) VALUES (:id, :package_id, :file_name)")
-        connection.execute(query_string.bindparams(id=uuid.uuid4(), package_id=package_id, file_name=file.filename))
-        connection.commit()
-        return {'ok': True, 'message': 'created success'}
+      try:
+        file.save(file_path)
+        with self.engine.connect() as connection:
+          query_string = text("INSERT INTO public.package_thumbnail(id, package_id, file_name) VALUES (:id, :package_id, :file_name)")
+          connection.execute(query_string.bindparams(id=uuid.uuid4(), package_id=package_id, file_name=file.filename))
+          connection.commit()
+          return {'ok': True, 'message': 'created success'}
 
-      # except FileNotFoundError:
-      #   return {'ok': False, 'message': 'no such file or directory'}
-      # except:
-      #  return {'ok': False, 'message': 'failed to create'}
+      except FileNotFoundError:
+        return {'ok': False, 'message': 'no such file or directory'}
+      except:
+        return {'ok': False, 'message': 'failed to create'}
 
   def get_thumbnail(self, package_id:str = None):
     with self.engine.connect() as connection:
@@ -86,4 +86,4 @@ class Thumbnail(User):
         image = f'{THUMBNAIL_HOST}/{file_name}'
         return {'ok': True, 'result': image}
       except:
-        return {'ok': False, 'result': None}
+        return {'ok': False, 'result': f'{THUMBNAIL_HOST}/default.png'}

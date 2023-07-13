@@ -6,7 +6,7 @@ from flask_cors import cross_origin
 discussion_route = Blueprint('discussion_route', __name__)
 
 # get all topics by package
-@discussion_route.route('/<package_id>/topics', methods=['GET'])
+@discussion_route.route('/<package_id>/topics/', methods=['GET'])
 def get_topics(package_id):
     jwt_token = request.headers.get('Authorization')
     topic = Discussion(jwt_token, None)
