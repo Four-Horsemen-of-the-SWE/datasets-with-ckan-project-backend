@@ -42,25 +42,6 @@ class Discussion(User):
           'user_image_url': topic['image_url']
         })
       return response
-    
-  def get_comment(self, topic_id:str = None):
-    if topic_id is None:
-      return {'ok': False, 'message': 'cannot fetch topics'}
-    with self.engine.connect() as connection:
-      query_string = "SELECT comment.id, comment.topic_id, comment.body, comment.created, comment.user_id, public.user.id, public.user.name, public.user.image_url FROM public.comment INNER JOIN public.user ON comment.user_id = public.user.id WHERE comment.topic_id = '%s' ORDER BY comment.created ASC" % topic_id
-      results = connection.execute(text(query_string)).mappings().all()
-      response = []
-      for comment in results:
-        response.append({
-          'id': comment['id'],
-          'topic_id': comment['topic_id'],
-          'body': comment['body'],
-          'created': comment['created'].isoformat(),
-          'user_id': comment['user_id'],
-          'user_name': comment['name'],
-          'user_image_url': comment['image_url']
-        })
-      return response
 
   def create_comment(self, topic_id:str = None, payload: dict = None):
     if topic_id is None:
@@ -70,20 +51,44 @@ class Discussion(User):
       connection.execute(text(query_string))
       connection.commit()
       return {'ok': True, 'message': 'success'}
-  
-  def get_topic_details(self, topic_id:str = None):
+
+  def get_topic_and_comments(self, topic_id:str = None):
     if topic_id is None:
-      return {'ok': False, 'message': 'cannot fetch topics'}
-    with self.engine.connect() as connection:
-      query_string = "SELECT topic.id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id, public.user.name, public.user.image_url FROM public.topic INNER JOIN public.user ON topic.user_id = public.user.id WHERE topic.id = '%s'" % topic_id
-      result = connection.execute(text(query_string)).mappings().one()
-      return {
-          'id': result['id'],
-          'package_id': result['package_id'],
-          'title': result['title'],
-          'body': result['body'],
-          'created': result['created'].isoformat(),
-          'user_id': result['user_id'],
-          'user_name': result['name'],
-          'user_image_url': result['image_url']
+      return 'cannot fetch topics'
+    try:
+      with self.engine.connect() as connection:
+        result = None
+        # get topic details
+        topic_query_string = "SELECT topic.id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id, public.user.name, public.user.image_url FROM public.topic INNER JOIN public.user ON topic.user_id = public.user.id WHERE topic.id = '%s'" % topic_id
+        topic_query_result = connection.execute(text(topic_query_string)).mappings().one()
+        result = {
+            'id': topic_query_result['id'],
+            'package_id': topic_query_result['package_id'],
+            'title': topic_query_result['title'],
+            'body': topic_query_result['body'],
+            'created': topic_query_result['created'].isoformat(),
+            'user_id': topic_query_result['user_id'],
+            'user_name': topic_query_result['name'],
+            'user_image_url': topic_query_result['image_url'],
+            'comments': [],
+            'comments_count': 0
         }
+
+        # get topic's comments
+        comment_query_string = "SELECT comment.id, comment.body, comment.created, comment.user_id, public.user.id, public.user.name, public.user.image_url FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id WHERE comment.topic_id = '%s'" % topic_id
+        comment_query_result = connection.execute(text(comment_query_string)).mappings().all()
+        for comment in comment_query_result:
+            result['comments'].append({
+                'id': comment['id'],
+                'body': comment['body'],
+                'created': comment['created'].isoformat(),
+                'user_id': comment['user_id'],
+                'user_name': comment['name'],
+                'user_image_url': comment['image_url']
+            })
+
+        result['comments_count'] = len(comment_query_result)
+
+        return result
+    except:
+      return 'error'
