@@ -24,26 +24,17 @@ def create_topic():
     new_topic = Discussion(jwt_token, payload)
     return new_topic.create_topic()
 
-# view topic details
+# view topic details, include comments
 @discussion_route.route('/topic/<topic_id>', methods=['GET'])
-def get_topic(topic_id):
-    result = Discussion().get_topic_details(topic_id)
-    return {'ok':True, 'message': 'success', 'result': result}
-
-# view comment by topic
-@discussion_route.route('/comments/<topic_id>', methods=['GET'])
-def view_topics(topic_id):
-    jwt_token = request.headers.get('Authorization')
-    topic = Discussion(jwt_token, None)
-    result = topic.get_comment(topic_id)
-    return {'ok':True, 'message': 'success', 'result': result}
+def get_topic_and_comments(topic_id):
+    result = Discussion().get_topic_and_comments(topic_id)
+    return {'ok': True, 'result': result}
 
 # create comment, comment into the topic
 @discussion_route.route('/comments/<topic_id>', methods=['POST'])
 @cross_origin()
 def create_comment(topic_id):
     jwt_token = request.headers.get('Authorization')
-    print(f'token => {jwt_token}')
     payload = request.json
     topic = Discussion(jwt_token=jwt_token)
     return topic.create_comment(topic_id, payload)
