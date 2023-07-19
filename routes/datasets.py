@@ -228,7 +228,7 @@ def delete_resource(resource_id):
 def get_number_of_datasets():
 	with ckan_connect() as ckan:
 		result = ckan.action.package_list()
-		return {'ok': True, 'message': 'success', 'number': len(result)}
+		return {'ok': True, 'message': 'success', 'result': len(result)}
 
 # datasets search
 @datasets_route.route('/search', methods=['GET'])
