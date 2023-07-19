@@ -6,8 +6,32 @@ from ckanapi import ValidationError, SearchError
 
 users_route = Blueprint('users_route', __name__)
 
+# make user is admin
+@users_route.route('/<user_id>/admin', methods=['POST'])
+def make_user_admin(user_id):
+	try:
+		jwt_token = request.headers.get('Authorization')
+		user = User(jwt_token=jwt_token)
+
+		result = user.make_user_admin(user_id)
+		return result
+	except:
+		return {'ok': False, 'message': 'backend failed'}
+
+# make user is admin
+@users_route.route('/<user_id>/admin', methods=['DELETE'])
+def remove_user_admin(user_id):
+	try:
+		jwt_token = request.headers.get('Authorization')
+		user = User(jwt_token=jwt_token)
+
+		result = user.remove_user_admin(user_id)
+		return result
+	except:
+		return {'ok': False, 'message': 'backend failed'}
+
 # check if user is admin
-@users_route.route('/is_admin', methods=['GET'])
+@users_route.route('/admin', methods=['GET'])
 def check_if_user_is_admin():
 	jwt_token = request.headers.get('Authorization')
 	user = User(jwt_token=jwt_token)
@@ -51,7 +75,7 @@ def create_users():
 @users_route.route('/<users_id>', methods=['DELETE'])
 def delete_user(users_id):
 	'''
-		@p, mangkorn
+		@p, mangkorn, phone
 		in delete method we gonna use a admin's api-key
 	'''
 
