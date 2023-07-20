@@ -118,3 +118,31 @@ class User(PostgreSQL):
 	def is_admin(self):
 		user_details = self.get_user_details(self.jwt_token)
 		return user_details['is_admin'] == True
+
+	def make_user_admin(self, user_id: str = None):
+	    if user_id is None:
+	        return {'ok': False, 'message': 'user_id is not provided.'}
+
+	    # if current user is admin, then can make another user an admin
+	    if self.is_admin:
+	        with self.engine.connect() as connection:
+	            query_string = "UPDATE public.user SET sysadmin='true' WHERE id = '%s'" % user_id
+	            connection.execute(text(query_string))
+	            connection.commit()
+	        return {'ok': True, 'message': 'success'}
+	    else:
+	        return {'ok': False, 'message': 'current user is not admin.'}
+
+	def remove_user_admin(self, user_id: str = None):
+	    if user_id is None:
+	        return {'ok': False, 'message': 'user_id is not provided.'}
+
+	    # if current user is admin, then can remove another user from admin
+	    if self.is_admin:
+	        with self.engine.connect() as connection:
+	            query_string = "UPDATE public.user SET sysadmin='false' WHERE id = '%s'" % user_id
+	            connection.execute(text(query_string))
+	            connection.commit()
+	        return {'ok': True, 'message': 'success'}
+	    else:
+	        return {'ok': False, 'message': 'current user is not admin.'}
