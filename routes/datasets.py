@@ -7,6 +7,7 @@ from ckanapi import NotAuthorized, NotFound, CKANAPIError
 from ckan.ckan_connect import ckan_connect
 from postgresql.User import User
 from postgresql.Thumbnail import Thumbnail
+from postgresql.Dataset import Dataset
 import tempfile
 import base64
 import io
@@ -334,3 +335,26 @@ def update_dataset_thumbnail(dataset_id):
 
 	new_thumbnail = Thumbnail(jwt_token=token)
 	return new_thumbnail.update_thumbnail(dataset_id, image_data)
+
+# collect download statistic
+@datasets_route.route('/<dataset_id>/download', methods=['POST'])
+def collect_download_static(dataset_id):
+	jwt_token = request.headers.get('Authorization')
+	dataset = Dataset(jwt_token=jwt_token)
+
+	result = dataset.collect_download_static(dataset_id)
+	if result:
+		return {'ok': True, 'message': 'success.'}
+	else:
+		return {'ok': False, 'message': 'failed.'}
+
+# get download statistic, (for dataset view page)
+@datasets_route.route('/<dataset_id>/download', methods=['GET'])
+def get_download_statistic(dataset_id):
+	dataset = Dataset()
+
+	result = dataset.get_download_statistic(dataset_id)
+	if result['ok']:
+		return {'ok': True, 'message': 'success.', 'result': result['result'], 'total_download': result['total_download']}
+	else:
+		return {'ok': False, 'message': 'failed.'}
