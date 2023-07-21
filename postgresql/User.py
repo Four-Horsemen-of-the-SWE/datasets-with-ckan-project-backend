@@ -65,7 +65,6 @@ class User(PostgreSQL):
 				self.api_token = token
 				return token	
 			except:
-				# print('user don\'t have api token')
 				return None
 
 	def login(self, name, password):
@@ -146,3 +145,15 @@ class User(PostgreSQL):
 	        return {'ok': True, 'message': 'success'}
 	    else:
 	        return {'ok': False, 'message': 'current user is not admin.'}
+
+	# get user name by id
+	def get_user_name(self, user_id: str = None):
+		if user_id is None:
+			return False
+
+		with self.engine.connect() as connection:
+			query_string = "SELECT name FROM public.user WHERE id = '%s'" % user_id
+			result = connection.execute(text(query_string)).mappings().one()
+			return result['name']
+
+
