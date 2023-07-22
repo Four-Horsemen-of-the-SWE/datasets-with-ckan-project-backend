@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_cors import cross_origin
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
-from ckanapi import NotAuthorized, NotFound, CKANAPIError
+from ckanapi import NotAuthorized, NotFound, CKANAPIError, ValidationError
 from ckan.ckan_connect import ckan_connect
 from postgresql.User import User
 from postgresql.Thumbnail import Thumbnail
@@ -22,12 +22,13 @@ def get_datasets():
 	with ckan_connect() as ckan:
 		result = []
 		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=100)
+		user = User()
 		for dataset in datasets:
 			# if dataset is public
 			if dataset['private'] == False:
 				thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 				result.append({
-					'author': dataset['author'],
+					'author': user.get_user_name(user_id = dataset['creator_user_id']),
 					'metadata_created': dataset['metadata_created'],
 					'metadata_modified': dataset['metadata_modified'],
 					'name': dataset['name'],
@@ -89,12 +90,14 @@ def create_datasets():
 	user = User(jwt_token=token)
 
 	with ckan_connect(api_key=user.api_token) as ckan:
-		# try:
+		try:
 			result = ckan.action.package_create(**payload)
 			return {'ok': True, 'message': 'success', 'result': result}
-		# except CKANAPIError:
+		except ValidationError:
+			return {'ok': False, 'message': 'name is already in use.'}
+		except CKANAPIError:
 			return {'ok': False, 'message': 'ckan api error'}
-		# except:
+		except:
 			return {'ok': False, 'message': 'api server error'}
 
 # update dataset
@@ -231,31 +234,39 @@ def get_number_of_datasets():
 		result = ckan.action.package_list()
 		return {'ok': True, 'message': 'success', 'result': len(result)}
 
-# datasets search
+from flask import request, jsonify
+
 @datasets_route.route('/search', methods=['GET'])
 def search_datasets():
-	datasets_name = request.args.get('q')
-	tags = request.args.getlist('tags')
-	tag_query = '';
+    datasets_name = request.args.get('q')
+    tags = request.args.getlist('tags')
+    tag_query = ''
 
-	if datasets_name is None or datasets_name == 'null':
-		datasets_name = "*:*"
-	if len(tags):
-		# fq='tags:(ambatukam OR medicine OR amazon)'
-		tag_str = " OR ".join(f"{tag}" for tag in tags)
-		tag_query = f'tags:({tag_str})'
-	else:
-		tag_query = "*:*"
+    if datasets_name is None or datasets_name == 'null' or datasets_name == '':
+        datasets_name = "*:*"
 
-	print(datasets_name, tag_query)
+    if len(tags):
+        tag_str = " OR ".join(f'"{tag}"' for tag in tags)  # Wrap each tag in double quotes
+        tag_query = f'tags:({tag_str})'
+    else:
+        tag_query = "*:*"
 
-	with ckan_connect() as ckan:
-		# if request come with query string
-		result = ckan.action.package_search(q=datasets_name, fq=tag_query, include_private=False, rows=1000)
-		if(result['count'] > 0):
-			return {'ok': True, 'message': 'success', 'result': result['results']}
-		else:
-			return {'ok': False, 'message': 'not found'}
+    with ckan_connect() as ckan:
+        result = {}
+        # If request comes with a query string or no parameters provided, it will return all datasets
+        result = ckan.action.package_search(q=datasets_name, fq=tag_query, include_private=False, rows=1000)
+        if result['count'] > 0:
+            # make datasets return with thumbnail
+            for dataset in result['results']:  # Loop through each dataset in the 'results'
+                # get thumbnail
+                thumbnail = Thumbnail().get_thumbnail(dataset['id'])
+
+                # insert thumbnail into the dataset
+                dataset['thumbnail'] = thumbnail['result']
+            return jsonify({'ok': True, 'message': 'success', 'result': result['results']})
+        else:
+            return jsonify({'ok': False, 'message': 'not found', 'result': [], 'dataset_name': datasets_name})
+
 
 # dataset search but it's auto complete
 @datasets_route.route('/search/auto_complete', methods=['GET'])
