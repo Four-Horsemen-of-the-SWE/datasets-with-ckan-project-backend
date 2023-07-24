@@ -239,8 +239,11 @@ from flask import request, jsonify
 @datasets_route.route('/search', methods=['GET'])
 def search_datasets():
     datasets_name = request.args.get('q')
+    # tags
     tags = request.args.getlist('tags')
     tag_query = ''
+    # sort
+    sort = request.args.get('sort')
 
     if datasets_name is None or datasets_name == 'null' or datasets_name == '':
         datasets_name = "*:*"
@@ -254,7 +257,7 @@ def search_datasets():
     with ckan_connect() as ckan:
         result = {}
         # If request comes with a query string or no parameters provided, it will return all datasets
-        result = ckan.action.package_search(q=datasets_name, fq=tag_query, include_private=False, rows=1000)
+        result = ckan.action.package_search(q=datasets_name, fq=tag_query, sort=sort, include_private=False, rows=1000)
         if result['count'] > 0:
             # make datasets return with thumbnail
             for dataset in result['results']:  # Loop through each dataset in the 'results'
