@@ -49,8 +49,6 @@ class Thumbnail(User):
       with self.engine.connect() as connection:
           # now store into databse
           query_string = text("UPDATE public.package_thumbnail SET image_data=:image_bytes WHERE package_id = :package_id")
-          # query_string = text("INSERT INTO public.package_thumbnail(id, package_id, image_data) VALUES (:id, :package_id, :image_bytes)")
-
           connection.execute(query_string.bindparams(package_id=package_id, image_bytes=image_bytes))
           connection.commit()
           return {'ok': True, 'message': 'update success'}

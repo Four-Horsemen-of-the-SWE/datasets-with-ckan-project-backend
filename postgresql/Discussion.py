@@ -47,14 +47,55 @@ class Discussion(User):
         })
       return response
 
-  def create_comment(self, topic_id:str = None, payload: dict = None):
-    if topic_id is None:
-      return {'ok': False, 'message': 'cannot fetch topics'}
+  def _get_comment(self, comment_id: str = None):
+    if comment_id is None:
+      return False
+
     with self.engine.connect() as connection:
-      query_string = "INSERT INTO public.comment( id, topic_id, body, user_id) VALUES ('%s', '%s', '%s', '%s')" % (uuid.uuid4(), topic_id, payload['body'], self.id)
-      connection.execute(text(query_string))
-      connection.commit()
-      return {'ok': True, 'message': 'success'}
+      query_string = "SELECT comment.id, comment.body, comment.created, comment.user_id, public.user.id, public.user.name, public.user.image_url FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id WHERE comment.id = '%s'" % comment_id
+      result = connection.execute(text(query_string)).mappings().one()
+      created_comment = {
+        'id': result['id'],
+        'body': result['body'],
+        'created': result['created'].isoformat(),
+        'user_id': result['user_id'],
+        'user_name': result['name'],
+        'user_image_url': result['image_url']
+      }
+      return created_comment
+
+  def create_comment(self, topic_id:str = None, payload: dict = None):
+    try:
+      comment_id = uuid.uuid4()
+      if topic_id is None:
+        return {'ok': False, 'message': 'cannot fetch topics'}
+      with self.engine.connect() as connection:
+        query_string = "INSERT INTO public.comment( id, topic_id, body, user_id) VALUES ('%s', '%s', '%s', '%s')" % (comment_id, topic_id, payload['body'], self.id)
+        connection.execute(text(query_string))
+        connection.commit()
+
+        # get comment that created
+        created_comment = self._get_comment(comment_id = comment_id)
+
+        return {'ok': True, 'message': 'success', 'result': created_comment}
+    except:
+      return {'ok': False, 'message': 'create failed'}
+
+  def update_comment(self, comment_id:str = None, payload: dict = None):
+    # try:
+      if comment_id is None:
+        return {'ok': False, 'message': 'cannot fetch topics'}
+      with self.engine.connect() as connection:
+        query_string = text("UPDATE public.comment SET body=:body WHERE id=:comment_id")
+        connection.execute(query_string.bindparams(body=payload['body'], comment_id=comment_id))
+        connection.commit()
+
+        # get comment that created
+        # update_comment = self._get_comment(comment_id = comment_id)
+
+        return {'ok': True, 'message': 'success'}
+    #except:
+    #  return {'ok': False, 'message': 'update failed'}
 
   def get_topic_and_comments(self, topic_id:str = None):
     if topic_id is None:
@@ -79,11 +120,11 @@ class Discussion(User):
         }
 
         # get topic's comments
-        comment_query_string = "SELECT comment.id, comment.body, comment.created, comment.user_id, public.user.id, public.user.name, public.user.image_url FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id WHERE comment.topic_id = '%s'" % topic_id
+        comment_query_string = "SELECT comment.id as comment_id, comment.body, comment.created, comment.user_id, public.user.id as user_id, public.user.name, public.user.image_url FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id WHERE comment.topic_id = '%s'" % topic_id
         comment_query_result = connection.execute(text(comment_query_string)).mappings().all()
         for comment in comment_query_result:
             result['comments'].append({
-                'id': comment['id'],
+                'id': comment['comment_id'],
                 'body': comment['body'],
                 'created': comment['created'].isoformat(),
                 'user_id': comment['user_id'],
