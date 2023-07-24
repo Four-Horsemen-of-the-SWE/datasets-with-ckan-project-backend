@@ -16,16 +16,37 @@ class Discussion(User):
     self.payload = payload
 
   def create_topic(self, package_id):
-    try:
+    #try:
       unique_id = uuid.uuid4()
       with self.engine.connect() as connection:
         query_string = "INSERT INTO public.topic(id, package_id, title, body, user_id) VALUES ('%s', '%s', '%s', '%s', '%s')" % ( unique_id,package_id, self.payload['title'], self.payload['body'], self.id)
         connection.execute(text(query_string))
         # อย่าลืม commit ไม่งั้นมันไม่เซฟ
         connection.commit()
-        return {'ok': True, 'message': 'success', 'result': unique_id}
+
+        result = self._get_topic(topic_id = unique_id)
+
+        return {'ok': True, 'message': 'success', 'result': result}
+    #except:
+    #  return {'ok': False, 'message': 'backend error'}
+
+  def _get_topic(self, topic_id:str = None):
+    try:
+      with self.engine.connect() as connection:
+        query_string = "SELECT topic.id as topic_id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id as user_id, public.user.name, public.user.image_url FROM public.topic INNER JOIN public.user ON topic.user_id = public.user.id WHERE topic.id = '%s'" % topic_id
+        result = connection.execute(text(query_string)).mappings().one()
+        return {
+          'id': result['topic_id'],
+          'package_id': result['package_id'],
+          'title': result['title'],
+          'body': result['body'],
+          'created': result['created'].isoformat(),
+          'user_id': result['user_id'],
+          'user_name': result['name'],
+          'user_image_url': result['image_url']
+        }
     except:
-      return {'ok': False, 'message': 'backend error'}
+      return None
   
   def get_topic(self, package_id:str = None):
     if package_id is None:
@@ -109,7 +130,18 @@ class Discussion(User):
 
         return {'ok': True, 'message': 'success', 'result': comment_id}
     except:
-        return {'ok': False, 'message': 'delete failed'}      
+        return {'ok': False, 'message': 'delete failed'}   
+        
+  def delete_topic(self, topic_id: str = None):
+    if topic_id is None:
+      return {'ok': False, 'message': 'cannot delete topic'}
+
+    with self.engine.connect() as connection:
+      query_string = text("DELETE FROM public.topic WHERE id = :id AND user_id = :user_id")
+      connection.execute(query_string.bindparams(id = topic_id, user_id = self.id))
+      connection.commit()
+
+      return {'ok': True, 'message': 'success', 'result': topic_id}
 
   def get_topic_and_comments(self, topic_id:str = None):
     if topic_id is None:
