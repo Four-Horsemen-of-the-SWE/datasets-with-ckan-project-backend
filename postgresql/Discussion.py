@@ -52,10 +52,10 @@ class Discussion(User):
       return False
 
     with self.engine.connect() as connection:
-      query_string = "SELECT comment.id, comment.body, comment.created, comment.user_id, public.user.id, public.user.name, public.user.image_url FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id WHERE comment.id = '%s'" % comment_id
+      query_string = "SELECT comment.id as comment_id, comment.body, comment.created, comment.user_id, public.user.id as user_id, public.user.name, public.user.image_url FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id WHERE comment.id = '%s'" % comment_id
       result = connection.execute(text(query_string)).mappings().one()
       created_comment = {
-        'id': result['id'],
+        'id': result['comment_id'],
         'body': result['body'],
         'created': result['created'].isoformat(),
         'user_id': result['user_id'],
@@ -82,7 +82,7 @@ class Discussion(User):
       return {'ok': False, 'message': 'create failed'}
 
   def update_comment(self, comment_id:str = None, payload: dict = None):
-    # try:
+    try:
       if comment_id is None:
         return {'ok': False, 'message': 'cannot fetch topics'}
       with self.engine.connect() as connection:
@@ -91,11 +91,25 @@ class Discussion(User):
         connection.commit()
 
         # get comment that created
-        # update_comment = self._get_comment(comment_id = comment_id)
+        update_comment = self._get_comment(comment_id = comment_id)
 
-        return {'ok': True, 'message': 'success'}
-    #except:
-    #  return {'ok': False, 'message': 'update failed'}
+        return {'ok': True, 'message': 'success', 'result': update_comment}
+    except:
+      return {'ok': False, 'message': 'update failed'}
+
+  def delete_comment(self, comment_id:str = None):
+    try:
+      if comment_id is None:
+        return {'ok': False, 'message': 'cannot fetch topics'}
+
+      with self.engine.connect() as connection:
+        query_string = text("DELETE FROM public.comment WHERE id = :id AND user_id = :user_id")
+        connection.execute(query_string.bindparams(id = comment_id, user_id = self.id))
+        connection.commit()
+
+        return {'ok': True, 'message': 'success', 'result': comment_id}
+    except:
+        return {'ok': False, 'message': 'delete failed'}      
 
   def get_topic_and_comments(self, topic_id:str = None):
     if topic_id is None:
