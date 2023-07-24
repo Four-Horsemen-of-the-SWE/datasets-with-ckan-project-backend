@@ -15,13 +15,17 @@ class Discussion(User):
     super(Discussion, self).__init__(jwt_token=jwt_token)
     self.payload = payload
 
-  def create_topic(self):
-    with self.engine.connect() as connection:
-      query_string = "INSERT INTO public.topic(id, package_id, title, body, user_id) VALUES ('%s', '%s', '%s', '%s', '%s')" % (uuid.uuid4() ,self.payload['package_id'], self.payload['title'], self.payload['body'], self.id)
-      connection.execute(text(query_string))
-      # อย่าลืม commit ไม่งั้นมันไม่เซฟ
-      connection.commit()
-      return {'ok': True, 'message': 'success'}
+  def create_topic(self, package_id):
+    try:
+      unique_id = uuid.uuid4()
+      with self.engine.connect() as connection:
+        query_string = "INSERT INTO public.topic(id, package_id, title, body, user_id) VALUES ('%s', '%s', '%s', '%s', '%s')" % ( unique_id,package_id, self.payload['title'], self.payload['body'], self.id)
+        connection.execute(text(query_string))
+        # อย่าลืม commit ไม่งั้นมันไม่เซฟ
+        connection.commit()
+        return {'ok': True, 'message': 'success', 'result': unique_id}
+    except:
+      return {'ok': False, 'message': 'backend error'}
   
   def get_topic(self, package_id:str = None):
     if package_id is None:
