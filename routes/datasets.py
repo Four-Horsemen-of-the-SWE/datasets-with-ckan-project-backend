@@ -144,42 +144,46 @@ def delete_dataset(dataset_name):
 @datasets_route.route('/<dataset_id>/resources', methods=['POST'])
 @cross_origin()
 def create_resource(dataset_id):
-    token = request.headers.get('Authorization')
-    user = User(jwt_token=token)
+    try:
+        token = request.headers.get('Authorization')
+        user = User(jwt_token=token)
 
-    if 'resources' not in request.files:
-        return {'ok': False, 'message': 'file not provided'}
+        if 'resources' not in request.files:
+            return {'ok': False, 'message': 'file not provided'}
 
-    resources = request.files.getlist('resources')
-    results = []
+        resources = request.files.getlist('resources')
+        results = []
 
-    with ckan_connect(api_key=user.api_token) as ckan:
-        for file in resources:
-            filename = file.filename
-            unique_filename = f'{str(uuid.uuid4())[:4]}_{filename}'
-            file_path = os.path.join(os.path.abspath('upload'), unique_filename)
-            file.save(file_path)
+        with ckan_connect(api_key=user.api_token) as ckan:
+            for file in resources:
+                filename = file.filename
+                unique_filename = f'{str(uuid.uuid4())[:4]}_{filename}'
+                file_path = os.path.join(os.path.abspath('upload'), unique_filename)
+                file.save(file_path)
 
-            payload = {
-                'package_id': dataset_id,
-                'url': request.form.get('url', ''),
-                'description': request.form.get('description', ''),
-                'format': os.path.splitext(filename)[1][1:].lower(),
-                'name': filename,
-                'mimetype': file.mimetype,
-                'upload': open(file_path, 'rb')
-            }
+                payload = {
+                    'package_id': dataset_id,
+                    'url': request.form.get('url', ''),
+                    'description': request.form.get('description', ''),
+                    'format': os.path.splitext(filename)[1][1:].lower(),
+                    'name': request.form.get('name', filename),
+                    'mimetype': file.mimetype,
+                    'upload': open(file_path, 'rb')
+                }
 
-            # Save into CKAN
-            result = ckan.action.resource_create(**payload)
-            if result is not None:
-                # Remove the file after successful upload
-                os.remove(file_path)
-                results.append(result)
-            else:
-                return {'ok': False, 'message': 'Failed to upload resource'}
+                # Save into CKAN
+                result = ckan.action.resource_create(**payload)
+                if result is not None:
+                    # Remove the file after successful upload
+                    os.remove(file_path)
+                    results.append(result)
+                else:
+                    return {'ok': False, 'message': 'Failed to upload resource'}
 
-    return {'ok': True, 'message': 'Upload resource success', 'results': results}
+        return {'ok': True, 'message': 'create resource success.', 'result': results}
+    except:
+        return {'ok': False, 'message': 'create resource failed.'}
+
 
 
 # update resource
@@ -197,25 +201,11 @@ def update_resource(resource_id):
 		payload['name'] = request.form['name']
 	if 'description' in request.form:
 		payload['description'] = request.form['description']
-	if 'upload' in request.files:
-		upload = request.files['upload']
-		# save the file into temp folder
-		filename = upload.filename
-		file_path = os.path.join(os.path.abspath('file_upload_temp'), filename)
-		upload.save(file_path)
-		payload['upload'] = open(file_path, 'rb')
 
 	with ckan_connect(api_key=user.api_token) as ckan:
 		result = ckan.action.resource_patch(**payload)
 		if result is not None:
-			try:
-				# close file
-				if 'upload' in payload:
-					payload['upload'].close()
-					os.remove(file_path)
-				return {'ok': True, 'message': 'update resource success', 'result': result}
-			except OSError as e:
-				print(f'Error removing file: {e.filename} - {e.strerror}')
+			return {'ok': True, 'message': 'update resource success', 'result': result}
 				
 # delete resource
 @datasets_route.route('/resources/<resource_id>', methods=['DELETE'])
@@ -225,7 +215,7 @@ def delete_resource(resource_id):
 
 	with ckan_connect(api_key=user.api_token) as ckan:
 		result = ckan.action.resource_delete(id=resource_id)
-		return {'ok': True, 'message': 'delete success'}
+		return {'ok': True, 'message': 'delete success', 'result': resource_id}
 
 # get a number of datasets
 @datasets_route.route('/number', methods=['GET'])
@@ -372,3 +362,40 @@ def get_download_statistic(dataset_id):
 		return {'ok': True, 'message': 'success.', 'result': result['result'], 'total_download': result['total_download']}
 	else:
 		return {'ok': False, 'message': 'failed.'}
+
+'''
+# update resource
+@datasets_route.route('/resources/<resource_id>', methods=['PUT'])
+@cross_origin()
+def update_resource(resource_id):
+	token = request.headers.get('Authorization')
+	user = User(jwt_token=token)
+
+	payload = {
+		'id': resource_id,
+	}
+
+	if 'name' in request.form:
+		payload['name'] = request.form['name']
+	if 'description' in request.form:
+		payload['description'] = request.form['description']
+	if 'upload' in request.files:
+		upload = request.files['upload']
+		# save the file into temp folder
+		filename = upload.filename
+		file_path = os.path.join(os.path.abspath('file_upload_temp'), filename)
+		upload.save(file_path)
+		payload['upload'] = open(file_path, 'rb')
+
+	with ckan_connect(api_key=user.api_token) as ckan:
+		result = ckan.action.resource_patch(**payload)
+		if result is not None:
+			try:
+				# close file
+				if 'upload' in payload:
+					payload['upload'].close()
+					os.remove(file_path)
+				return {'ok': True, 'message': 'update resource success', 'result': result}
+			except OSError as e:
+				print(f'Error removing file: {e.filename} - {e.strerror}')
+'''
