@@ -46,6 +46,7 @@ def get_topic_and_comments(topic_id):
 def create_comment(topic_id):
     jwt_token = request.headers.get('Authorization')
     payload = request.json
+    
     topic = Discussion(jwt_token=jwt_token)
     return topic.create_comment(topic_id, payload)
 

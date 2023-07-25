@@ -16,19 +16,26 @@ class Discussion(User):
     self.payload = payload
 
   def create_topic(self, package_id):
-    #try:
+    try:
       unique_id = uuid.uuid4()
       with self.engine.connect() as connection:
-        query_string = "INSERT INTO public.topic(id, package_id, title, body, user_id) VALUES ('%s', '%s', '%s', '%s', '%s')" % ( unique_id,package_id, self.payload['title'], self.payload['body'], self.id)
-        connection.execute(text(query_string))
+        query_string = "INSERT INTO public.topic (id, package_id, title, body, user_id) VALUES (:unique_id, :package_id, :title, :body, :id)"
+        connection.execute(text(query_string), {
+            'unique_id': unique_id,
+            'package_id': package_id,
+            'title': self.payload['title'],
+            'body': self.payload['body'],
+            'id': self.id
+          }
+        )
         # อย่าลืม commit ไม่งั้นมันไม่เซฟ
         connection.commit()
 
         result = self._get_topic(topic_id = unique_id)
 
         return {'ok': True, 'message': 'success', 'result': result}
-    #except:
-    #  return {'ok': False, 'message': 'backend error'}
+    except:
+      return {'ok': False, 'message': 'backend error'}
 
   def _get_topic(self, topic_id:str = None):
     try:
@@ -85,22 +92,31 @@ class Discussion(User):
       }
       return created_comment
 
-  def create_comment(self, topic_id:str = None, payload: dict = None):
-    try:
-      comment_id = uuid.uuid4()
-      if topic_id is None:
-        return {'ok': False, 'message': 'cannot fetch topics'}
-      with self.engine.connect() as connection:
-        query_string = "INSERT INTO public.comment( id, topic_id, body, user_id) VALUES ('%s', '%s', '%s', '%s')" % (comment_id, topic_id, payload['body'], self.id)
-        connection.execute(text(query_string))
-        connection.commit()
+  def create_comment(self, topic_id: str = None, payload: dict = None):
+      try:
+        comment_id = str(uuid.uuid4())
+        if topic_id is None:
+            return {'ok': False, 'message': 'cannot fetch topics'}
 
-        # get comment that created
-        created_comment = self._get_comment(comment_id = comment_id)
+        with self.engine.connect() as connection:
+            query_string = "INSERT INTO public.comment (id, topic_id, body, user_id) VALUES (:comment_id, :topic_id, :body, :user_id)"
+            connection.execute(
+                text(query_string), {
+                  'comment_id': comment_id,
+                  'topic_id': topic_id,
+                  'body': payload['body'],
+                  'user_id': self.id
+                }
+            )
+            connection.commit()
 
-        return {'ok': True, 'message': 'success', 'result': created_comment}
-    except:
-      return {'ok': False, 'message': 'create failed'}
+            # get comment that was created
+            created_comment = self._get_comment(comment_id=comment_id)
+
+            return {'ok': True, 'message': 'success', 'result': created_comment}
+      except:
+          return {'ok': False, 'message': 'create failed'}
+
 
   def update_comment(self, comment_id:str = None, payload: dict = None):
     try:

@@ -144,7 +144,7 @@ def delete_dataset(dataset_name):
 @datasets_route.route('/<dataset_id>/resources', methods=['POST'])
 @cross_origin()
 def create_resource(dataset_id):
-    try:
+    # try:
         token = request.headers.get('Authorization')
         user = User(jwt_token=token)
 
@@ -181,8 +181,8 @@ def create_resource(dataset_id):
                     return {'ok': False, 'message': 'Failed to upload resource'}
 
         return {'ok': True, 'message': 'create resource success.', 'result': results}
-    except:
-        return {'ok': False, 'message': 'create resource failed.'}
+    # except:
+    #    return {'ok': False, 'message': 'create resource failed.'}
 
 
 
@@ -241,8 +241,6 @@ def search_datasets():
 
     if license is not None:
         filter_query += f' AND license_id:{license}'
-
-    print(tag_query)
 
     with ckan_connect() as ckan:
         result = {}
