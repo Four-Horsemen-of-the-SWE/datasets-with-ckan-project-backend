@@ -224,14 +224,15 @@ def get_number_of_datasets():
 		result = ckan.action.package_list()
 		return {'ok': True, 'message': 'success', 'result': len(result)}
 
-from flask import request, jsonify
-
+# search datasets
 @datasets_route.route('/search', methods=['GET'])
 def search_datasets():
     datasets_name = request.args.get('q')
     # tags
     tags = request.args.getlist('tags')
     tag_query = ''
+    # license
+    license = request.args.get('license', None)
     # sort
     sort = request.args.get('sort')
 
@@ -239,18 +240,19 @@ def search_datasets():
         datasets_name = "*:*"
 
     if len(tags):
-        tag_str = " OR ".join(f'"{tag}"' for tag in tags)  # Wrap each tag in double quotes
+        tag_str = " AND ".join(f'"{tag}"' for tag in tags)  # Wrap each tag in double quotes
         tag_query = f'tags:({tag_str})'
     else:
         tag_query = "*:*"
 
+    if license is not None:
+        tag_query += f' AND license_id:"{license}"'
+
     with ckan_connect() as ckan:
         result = {}
-        # If request comes with a query string or no parameters provided, it will return all datasets
         result = ckan.action.package_search(q=datasets_name, fq=tag_query, sort=sort, include_private=False, rows=1000)
         if result['count'] > 0:
-            # make datasets return with thumbnail
-            for dataset in result['results']:  # Loop through each dataset in the 'results'
+            for dataset in result['results']:
                 # get thumbnail
                 thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 
@@ -259,6 +261,7 @@ def search_datasets():
             return jsonify({'ok': True, 'message': 'success', 'result': result['results']})
         else:
             return jsonify({'ok': False, 'message': 'not found', 'result': [], 'dataset_name': datasets_name})
+
 
 
 # dataset search but it's auto complete
