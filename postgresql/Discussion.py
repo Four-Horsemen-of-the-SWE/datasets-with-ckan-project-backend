@@ -115,7 +115,7 @@ class Discussion(User):
 
             return {'ok': True, 'message': 'success', 'result': created_comment}
       except:
-          return {'ok': False, 'message': 'create failed'}
+        return {'ok': False, 'message': 'create failed'}
 
 
   def update_comment(self, comment_id:str = None, payload: dict = None):
@@ -182,7 +182,7 @@ class Discussion(User):
         }
 
         # get topic's comments
-        comment_query_string = "SELECT comment.id as comment_id, comment.body, comment.created, comment.user_id, public.user.id as user_id, public.user.name, public.user.image_url FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id WHERE comment.topic_id = '%s' ORDER BY comment.created ASC" % topic_id
+        comment_query_string = "SELECT comment.id as comment_id, comment.body, comment.created, comment.user_id, public.user.id as user_id, public.user.name, public.user.image_url, public.user.sysadmin FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id WHERE comment.topic_id = '%s' ORDER BY comment.created ASC" % topic_id
         comment_query_result = connection.execute(text(comment_query_string)).mappings().all()
         for comment in comment_query_result:
             result['comments'].append({
@@ -191,7 +191,8 @@ class Discussion(User):
                 'created': comment['created'].isoformat(),
                 'user_id': comment['user_id'],
                 'user_name': comment['name'],
-                'user_image_url': comment['image_url']
+                'user_image_url': comment['image_url'],
+                'is_admin': comment['sysadmin']
             })
 
         result['comments_count'] = len(comment_query_result)
