@@ -244,11 +244,15 @@ def search_datasets():
 
     with ckan_connect() as ckan:
         result = {}
+        user = User()
         result = ckan.action.package_search(q=dataset_name, fq=filter_query, sort=sort, include_private=False, rows=1000)
         if result['count'] > 0:
             for dataset in result['results']:
                 # get thumbnail
                 thumbnail = Thumbnail().get_thumbnail(dataset['id'])
+
+                # get user name (author)
+                dataset['author'] = user.get_user_name(user_id = dataset['creator_user_id'])
 
                 # insert thumbnail into the dataset
                 dataset['thumbnail'] = thumbnail['result']
