@@ -21,7 +21,7 @@ datasets_route = Blueprint('datasets_route', __name__)
 def get_datasets():
 	with ckan_connect() as ckan:
 		result = []
-		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=100)
+		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=4)
 		user = User()
 		for dataset in datasets:
 			# if dataset is public
@@ -66,6 +66,9 @@ def get_dataset_datails(dataset_name):
 
 			# insert thumbnail into result
 			result['thumbnail'] = thumbnail['result']
+
+			# insert author name into result
+			result['author'] = user.get_user_name(result['creator_user_id'])
 
 			# check if datasets bookmarked
 			try:
@@ -241,6 +244,8 @@ def search_datasets():
 
     if license is not None:
         filter_query += f' AND license_id:{license}'
+
+    print(dataset_name, filter_query)
 
     with ckan_connect() as ckan:
         result = {}
