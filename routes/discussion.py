@@ -24,6 +24,16 @@ def create_topic(package_id):
     new_topic = Discussion(jwt_token, payload)
     return new_topic.create_topic(package_id=package_id)
 
+# update topic
+@discussion_route.route('/<topic_id>/topics', methods=['PUT'])
+@cross_origin()
+def update_topic(topic_id):
+    # get a authorization (api key) from header
+    jwt_token = request.headers.get('Authorization')
+    payload = request.json
+
+    return Discussion(jwt_token).update_topic(topic_id, payload)
+
 # delete topic
 @discussion_route.route('/<topic_id>/topics', methods=['DELETE'])
 @cross_origin()

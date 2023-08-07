@@ -1,5 +1,6 @@
 import os
 from sqlalchemy import create_engine, text
+from sqlalchemy.sql import func
 from dotenv import load_dotenv
 from passlib.hash import pbkdf2_sha512
 import uuid
@@ -117,6 +118,27 @@ class Discussion(User):
       except:
         return {'ok': False, 'message': 'create failed'}
 
+  def update_topic(self, topic_id: str = None, payload: dict = None):
+    try:
+      if topic_id is None:
+        return {'ok': False, 'message': 'topic id are not provided.'}
+
+      if payload is None:
+        return {'ok': False, 'message': 'payload are not provided.'}
+
+      print(topic_id)
+
+      with self.engine.connect() as connection:
+        query_string = text("UPDATE public.topic SET title=:title, body=:body, created=NOW() WHERE id=:topic_id")
+        connection.execute(query_string.bindparams(title=payload['title'], body=payload['body'], topic_id=topic_id))
+        connection.commit()
+
+        # get topic that created
+        updated_topic = self._get_topic(topic_id=topic_id)
+
+        return {'ok': True, 'message': 'success', 'result': updated_topic}
+    except:
+      return {'ok': False, 'message': 'backend error.'}
 
   def update_comment(self, comment_id:str = None, payload: dict = None):
     try:

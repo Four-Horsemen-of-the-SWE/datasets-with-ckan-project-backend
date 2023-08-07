@@ -8,7 +8,7 @@ tags_route = Blueprint('tags_route', __name__)
 @tags_route.route('/', methods=['GET'])
 def get_tags():
 	with ckan_connect() as ckan:
-		result = ckan.action.tag_list()
+		result = ckan.action.tag_list(all_fields=True)
 		return {'ok': True, 'message': 'success', 'result': result, 'count': len(result)}
 
 # create a tags
