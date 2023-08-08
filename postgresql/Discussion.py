@@ -188,7 +188,7 @@ class Discussion(User):
       with self.engine.connect() as connection:
         result = None
         # get topic details
-        topic_query_string = "SELECT topic.id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id, public.user.name, public.user.image_url FROM public.topic INNER JOIN public.user ON topic.user_id = public.user.id WHERE topic.id = '%s'" % topic_id
+        topic_query_string = "SELECT topic.id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id, public.user.name, public.user.image_url, COALESCE(SUM(CASE WHEN vote.vote_type = 'upvote' THEN 1 WHEN vote.vote_type = 'downvote' THEN -1 ELSE 0 END), 0) AS vote_score FROM public.topic INNER JOIN public.user ON topic.user_id = public.user.id LEFT JOIN public.vote ON topic.id = vote.target_id AND vote.target_type = 'topic' WHERE topic.id = '%s' GROUP BY topic.id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id, public.user.name, public.user.image_url" % topic_id
         topic_query_result = connection.execute(text(topic_query_string)).mappings().one()
         result = {
             'id': topic_query_result['id'],
@@ -200,11 +200,12 @@ class Discussion(User):
             'user_name': topic_query_result['name'],
             'user_image_url': topic_query_result['image_url'],
             'comments': [],
-            'comments_count': 0
+            'comments_count': 0,
+            'vote': topic_query_result['vote_score']
         }
 
         # get topic's comments
-        comment_query_string = "SELECT comment.id as comment_id, comment.body, comment.created, comment.user_id, public.user.id as user_id, public.user.name, public.user.image_url, public.user.sysadmin FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id WHERE comment.topic_id = '%s' ORDER BY comment.created ASC" % topic_id
+        comment_query_string = "SELECT comment.id AS comment_id, comment.body, comment.created, comment.user_id AS comment_user_id, public.user.id AS user_id, public.user.name, public.user.image_url, public.user.sysadmin, COALESCE(SUM(CASE WHEN vote.vote_type = 'upvote' THEN 1 WHEN vote.vote_type = 'downvote' THEN -1 ELSE 0 END), 0) AS vote_score FROM public.comment INNER JOIN public.user ON public.comment.user_id = public.user.id LEFT JOIN public.vote ON comment.id = vote.target_id AND vote.target_type = 'comment' WHERE comment.topic_id = '%s' GROUP BY comment.id, public.user.id ORDER BY comment.created ASC" % topic_id
         comment_query_result = connection.execute(text(comment_query_string)).mappings().all()
         for comment in comment_query_result:
             result['comments'].append({
@@ -214,7 +215,8 @@ class Discussion(User):
                 'user_id': comment['user_id'],
                 'user_name': comment['name'],
                 'user_image_url': comment['image_url'],
-                'is_admin': comment['sysadmin']
+                'is_admin': comment['sysadmin'],
+                'vote': comment['vote_score']
             })
 
         result['comments_count'] = len(comment_query_result)
