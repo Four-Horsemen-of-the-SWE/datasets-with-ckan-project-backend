@@ -23,11 +23,9 @@ class Vote(PostgreSQL):
   		try:
 	  		query_string = text("SELECT id, target_id, target_type, vote_type, user_id FROM public.vote WHERE target_id = :target_id AND user_id = :user_id")
 	  		result = connection.execute(query_string.bindparams(target_id = target_id, user_id = self.user.id)).mappings().one()
-	  		if result is not None and len(result):
-	  			return {'voted': True, 'id':  result['id'], 'target_id': result['target_id'], 'vote_type': result['vote_type'], 'user_id': result['user_id']}
-	  		else:
-	  			return {'voted': False}
-	  	except NoResultFound:
+
+	  		return {'voted': True, 'id':  result['id'], 'target_id': result['target_id'], 'vote_type': result['vote_type'], 'user_id': result['user_id']}
+	  	except:
 	  		return {'voted': False}
 
   # VOTE
