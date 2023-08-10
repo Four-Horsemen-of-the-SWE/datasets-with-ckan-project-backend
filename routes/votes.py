@@ -13,10 +13,14 @@ def vote():
   payload = request.json
 
   return Vote(jwt_token=jwt_token).vote(payload['target_id'], payload['target_type'], payload['vote_type'])
-
+  
 @votes_route.route('/<target_id>', methods=['GET'])
 @cross_origin()
 def get_vote(target_id):
   # target_id = request.args.get('target_id')
+  jwt_token = request.headers.get('Authorization')
 
-  return Vote().get_vote(target_id)
+  if jwt_token:
+    return Vote(jwt_token=jwt_token).get_vote(target_id)
+  else:
+    return Vote().get_vote(target_id)
