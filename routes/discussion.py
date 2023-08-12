@@ -10,7 +10,7 @@ discussion_route = Blueprint('discussion_route', __name__)
 def get_topics(package_id):
     jwt_token = request.headers.get('Authorization')
     topic = Discussion(jwt_token, None)
-    result = topic.get_topic(package_id)
+    result = topic.get_topics(package_id)
     return {'ok':True, 'message': 'success', 'result': result}
 
 # create topic
@@ -47,7 +47,9 @@ def delte_topic(topic_id):
 # view topic details, include comments
 @discussion_route.route('/topic/<topic_id>', methods=['GET'])
 def get_topic_and_comments(topic_id):
-    result = Discussion().get_topic_and_comments(topic_id)
+    jwt_token = request.headers.get('Authorization')
+    
+    result = Discussion(jwt_token = jwt_token).get_topic_and_comments(topic_id)
     return {'ok': True, 'result': result}
 
 # create comment, comment into the topic

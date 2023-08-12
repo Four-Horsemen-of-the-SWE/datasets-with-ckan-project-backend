@@ -56,14 +56,23 @@ class Discussion(User):
     except:
       return None
   
-  def get_topic(self, package_id:str = None):
+  def get_topics(self, package_id:str = None):
     if package_id is None:
       return {'ok': False, 'message': 'cannot fetch topics'}
     with self.engine.connect() as connection:
-      query_string = "SELECT topic.id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id, public.user.name, public.user.image_url FROM public.topic INNER JOIN public.user ON topic.user_id = public.user.id WHERE topic.package_id = '%s' ORDER BY topic.created ASC" % package_id
+      # query_string = "SELECT topic.id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id, public.user.name, public.user.image_url FROM public.topic INNER JOIN public.user ON topic.user_id = public.user.id WHERE topic.package_id = '%s' ORDER BY topic.created ASC" % package_id
+      query_string = "SELECT topic.id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id, public.user.name, public.user.image_url, COALESCE(SUM(CASE WHEN vote.vote_type = 'upvote' THEN 1 WHEN vote.vote_type = 'downvote' THEN -1 ELSE 0 END), 0) AS vote_score FROM public.topic INNER JOIN public.user ON topic.user_id = public.user.id LEFT JOIN public.vote ON topic.id = vote.target_id AND vote.target_type = 'topic' WHERE topic.package_id = '%s' GROUP BY topic.id, topic.package_id, topic.title, topic.body, topic.created, topic.user_id, public.user.name, public.user.image_url ORDER BY topic.created ASC" % package_id
       results = connection.execute(text(query_string)).mappings().all()
       response = []
       for topic in results:
+        is_voted = False
+        voted_type = None
+        if hasattr(self, 'id'):
+          r = self._is_already_voted(topic['id'], self.id)
+          is_voted = r['is_voted']
+          print(r)
+          if 'voted_type' in r:
+            voted_type = r['voted_type']
         response.append({
           'id': topic['id'],
           'package_id': topic['package_id'],
@@ -72,7 +81,10 @@ class Discussion(User):
           'created': topic['created'].isoformat(),
           'user_id': topic['user_id'],
           'user_name': topic['name'],
-          'user_image_url': topic['image_url']
+          'user_image_url': topic['image_url'],
+          'vote': topic['vote_score'],
+          'is_voted': is_voted,
+          'voted_type': voted_type
         })
       return response
 
