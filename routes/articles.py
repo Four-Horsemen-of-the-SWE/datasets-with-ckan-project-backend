@@ -38,9 +38,9 @@ def create_comment():
 	jwt_token = request.headers.get('Authorization')
 	payload = request.json
 
-	result = Article(jwt_token).create_comment(payload)
+	ok, result = Article(jwt_token).create_comment(payload)
 
-	if result:
-		return {'ok': True, 'message': 'success.'}
+	if ok:
+		return {'ok': True, 'message': 'success.', 'result': result}
 	else:
 		return {'ok': False, 'message': 'create failed.'}

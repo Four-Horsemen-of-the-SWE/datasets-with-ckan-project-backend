@@ -57,10 +57,12 @@ class Article(PostgreSQL):
 				query_string = text("INSERT INTO public.article_comment( id, article_id, body, user_id) VALUES (:id, :article_id, :body, :user_id)")
 				connection.execute(query_string.bindparams(id = _id, article_id = payload.get('article_id'), body = payload.get('body'), user_id = self.user.id))
 				connection.commit()
+
+				created_comment = self._get_comment_by_id(_id)
 				
-				return True
+				return True, created_comment
 			except:
-				return False
+				return False, None
 
 	def get_comment_by_article(self, article_id):
 		with self.engine.connect() as connection:
@@ -107,3 +109,28 @@ class Article(PostgreSQL):
 	      return {'is_voted': True, 'id': result['id'], 'target_id': result['target_id'], 'voted_type': result['vote_type'], 'user_id': result['user_id']}
 	    except:
 	    	return {'is_voted': False}
+
+	def _get_comment_by_id(self, comment_id: str):
+		with self.engine.connect() as connection:
+			try:
+				query_string = text("SELECT article_comment.id as comment_id, article_comment.body, article_comment.created_at, article_comment.updated_at, article_comment.user_id, public_user.id as user_id, public_user.name, public_user.image_url FROM public.article_comment AS article_comment INNER JOIN public.user AS public_user ON article_comment.user_id = public_user.id WHERE article_comment.id = :comment_id")
+				query_result = connection.execute(query_string.bindparams(comment_id = str(comment_id))).mappings().one()
+				result = {
+					'id': query_result['comment_id'],
+					'body': query_result['body'],
+					'created_at': query_result['created_at'].isoformat(),
+					'updated_at': query_result['updated_at'].isoformat(),
+					'user_id': query_result['user_id'],
+					'user_name': query_result['name'],
+        			'user_image_url': query_result['image_url']
+				}
+
+				print('1')
+
+				return result
+			except NoResultFound:
+				return []
+			except:
+				return  []
+
+# query_string = text("SELECT id, article_id, body, created_at, updated_at, user_id FROM public.article_comment WHERE id = '%s'" % str(comment_id))
