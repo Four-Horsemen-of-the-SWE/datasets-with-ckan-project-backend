@@ -44,3 +44,26 @@ def create_comment():
 		return {'ok': True, 'message': 'success.', 'result': result}
 	else:
 		return {'ok': False, 'message': 'create failed.'}
+
+# delete comment by id
+@article_route.route('/comments/<comment_id>', methods=['DELETE'])
+def delete_comment(comment_id):
+	jwt_token = request.headers.get('Authorization')
+
+	result = Article(jwt_token=jwt_token).dalete_comment(comment_id)
+	if result:
+		return {'ok': True, 'message': 'success.'}
+	else:
+		return {'ok': False, 'message': 'failed.'}
+
+# update comment by id
+@article_route.route('/comments/<comment_id>', methods=['PUT'])
+def update_comment(comment_id):
+	jwt_token = request.headers.get('Authorization')
+	payload = request.json
+
+	ok, result = Article(jwt_token=jwt_token).update_comment(comment_id, payload)
+	if ok:
+		return {'ok': True, 'message': 'success.', 'result': result}
+	else:
+		return {'ok': False, 'message': 'failed.'}

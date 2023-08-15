@@ -64,6 +64,32 @@ class Article(PostgreSQL):
 			except:
 				return False, None
 
+	def dalete_comment(self, comment_id):
+		with self.engine.connect() as connection:
+			try:
+				query_string = text("DELETE FROM public.article_comment WHERE id = :comment_id AND user_id = :user_id")
+				connection.execute(query_string.bindparams(comment_id = comment_id, user_id = self.user.id))
+				connection.commit()
+
+				return True
+			except:
+				return False
+
+	def update_comment(self, comment_id, payload):
+		with self.engine.connect() as connection:
+			try:
+				current_time = datetime.now()
+				query_string = text("UPDATE public.article_comment SET body=:body, updated_at=:updated_at WHERE id = :comment_id AND user_id = :user_id")
+				connection.execute(query_string.bindparams(body = payload['body'], updated_at = current_time, comment_id = comment_id, user_id = self.user.id))
+				connection.commit()
+
+				# the comment that updated
+				updated_comment = self._get_comment_by_id(comment_id)
+
+				return True, updated_comment
+			except:
+				return False, None
+
 	def get_comment_by_article(self, article_id):
 		with self.engine.connect() as connection:
 			try:
@@ -132,5 +158,3 @@ class Article(PostgreSQL):
 				return []
 			except:
 				return  []
-
-# query_string = text("SELECT id, article_id, body, created_at, updated_at, user_id FROM public.article_comment WHERE id = '%s'" % str(comment_id))
