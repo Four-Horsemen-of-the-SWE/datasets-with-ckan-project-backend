@@ -26,6 +26,17 @@ def create_article():
 	else:
 		return {'ok': False, 'message': 'create failed.'}
 
+# delete article
+@article_route.route('/<article_id>', methods=['DELETE'])
+def delete_article(article_id):
+	jwt_token = request.headers.get('Authorization')
+
+	result = Article(jwt_token).delete_article_by_id(article_id)
+	if result:
+		return {'ok': True, 'message': 'success.'}
+	else:
+		return {'ok': False, 'message': 'failed.'}
+
 # get all comment by article_id
 @article_route.route('/<article_id>/comments', methods=['GET'])
 def get_comment(article_id):
