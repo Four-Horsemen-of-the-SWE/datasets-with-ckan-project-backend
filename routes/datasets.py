@@ -42,6 +42,32 @@ def get_datasets():
 				})
 		return {'ok': True, 'message': 'success', 'result': result}
 
+#get all dataset for admin dashboard	
+@datasets_route.route('/dashboard', methods=['GET'])
+def get_datasets_dashborad():
+	with ckan_connect() as ckan:
+		result = []
+		datasets = ckan.action.current_package_list_with_resources(all_fields=True)
+		user = User()
+		for dataset in datasets:
+			# if dataset is public
+			if dataset['private'] == False:
+				thumbnail = Thumbnail().get_thumbnail(dataset['id'])
+				result.append({
+					'author': user.get_user_name(user_id = dataset['creator_user_id']),
+					'metadata_created': dataset['metadata_created'],
+					'metadata_modified': dataset['metadata_modified'],
+					'name': dataset['name'],
+					'title': dataset['title'],
+					'notes': dataset['notes'],
+					'id': dataset['id'],
+					'tags': dataset['tags'],
+					'license_title': dataset['license_title'],
+					'private': dataset['private'],
+					'thumbnail': thumbnail['result']
+				})
+		return {'ok': True, 'message': 'success', 'result': result}
+
 # get dataset deails, (giving a name to api, then return that dataset)
 # since 27/6/2023 @JCSNP. this function will return a thumbnails
 # use in ViewDatasets page
