@@ -50,6 +50,18 @@ class Article(PostgreSQL):
 			except:
 				return False
 
+	def delete_article_by_id(self, article_id):
+		with self.engine.connect() as connection:
+			print(article_id)
+			try:
+				query_string = text("DELETE FROM public.article WHERE id = :article_id")
+				connection.execute(query_string.bindparams(article_id = article_id))
+				connection.commit()
+
+				return True
+			except:
+				return False
+
 	def create_comment(self, payload):
 		_id = uuid.uuid4()
 		with self.engine.connect() as connection:

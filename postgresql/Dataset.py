@@ -12,6 +12,19 @@ class Dataset(PostgreSQL):
         if jwt_token is not None:
             self.user = User(jwt_token=jwt_token)
 
+    # change visibility
+    def change_visibility(self, dataset_id, visibility):
+        # try:
+            private = True if visibility == "private" else False
+            with self.engine.connect() as connection:
+                query_string = text("UPDATE public.package SET private=:visibility WHERE id=:dataset_id AND creator_user_id=:user_id")
+                connection.execute(query_string.bindparams(visibility = private, dataset_id = dataset_id, user_id = self.user.id))
+                connection.commit();
+
+                return True
+        # except:
+            # return False
+
     # store a download statistic
     def collect_download_static(self, dataset_id: str = None, resource_id: str = None):
         with self.engine.connect() as connection:

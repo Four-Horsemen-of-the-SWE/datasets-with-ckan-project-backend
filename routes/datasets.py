@@ -15,13 +15,23 @@ import uuid
 
 datasets_route = Blueprint('datasets_route', __name__)
 
+@datasets_route.route('/visibility', methods=['POST'])
+def change_visibility():
+	jwt_token = request.headers.get('Authorization')
+	payload = request.json
+	result = Dataset(jwt_token).change_visibility(payload['dataset_id'], payload['visibility'])
+	if result:
+		return {'ok': True, 'message': 'success.'}
+	else:
+		return {'ok': False, 'message': 'failed.'}
+
 # get all datasets, (only necessary information)
 # this function should called in homepage
 @datasets_route.route('/', methods=['GET'])
 def get_datasets():
 	with ckan_connect() as ckan:
 		result = []
-		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=4)
+		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=12)
 		user = User()
 		for dataset in datasets:
 			# if dataset is public
@@ -368,40 +378,3 @@ def get_download_statistic(dataset_id):
 		return {'ok': True, 'message': 'success.', 'result': result['result'], 'total_download': result['total_download']}
 	else:
 		return {'ok': False, 'message': 'failed.'}
-
-'''
-# update resource
-@datasets_route.route('/resources/<resource_id>', methods=['PUT'])
-@cross_origin()
-def update_resource(resource_id):
-	token = request.headers.get('Authorization')
-	user = User(jwt_token=token)
-
-	payload = {
-		'id': resource_id,
-	}
-
-	if 'name' in request.form:
-		payload['name'] = request.form['name']
-	if 'description' in request.form:
-		payload['description'] = request.form['description']
-	if 'upload' in request.files:
-		upload = request.files['upload']
-		# save the file into temp folder
-		filename = upload.filename
-		file_path = os.path.join(os.path.abspath('file_upload_temp'), filename)
-		upload.save(file_path)
-		payload['upload'] = open(file_path, 'rb')
-
-	with ckan_connect(api_key=user.api_token) as ckan:
-		result = ckan.action.resource_patch(**payload)
-		if result is not None:
-			try:
-				# close file
-				if 'upload' in payload:
-					payload['upload'].close()
-					os.remove(file_path)
-				return {'ok': True, 'message': 'update resource success', 'result': result}
-			except OSError as e:
-				print(f'Error removing file: {e.filename} - {e.strerror}')
-'''
