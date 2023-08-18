@@ -9,6 +9,7 @@ from routes.discussion import discussion_route
 from routes.groups import groups_route
 from routes.licenses import licenses_route
 from routes.votes import votes_route
+from routes.articles import article_route
 from dotenv import load_dotenv
 
 # load .env file
@@ -43,6 +44,7 @@ app.register_blueprint(discussion_route, url_prefix=f'{API_ENDPOINT}/discussions
 app.register_blueprint(groups_route, url_prefix=f'{API_ENDPOINT}/groups')
 app.register_blueprint(licenses_route, url_prefix=f'{API_ENDPOINT}/licenses')
 app.register_blueprint(votes_route, url_prefix=f'{API_ENDPOINT}/votes')
+app.register_blueprint(article_route, url_prefix=f'{API_ENDPOINT}/articles')
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0', port=5001, debug=True)
