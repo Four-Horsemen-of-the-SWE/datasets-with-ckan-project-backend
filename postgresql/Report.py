@@ -30,4 +30,4 @@ class Report(PostgreSQL):
 
   def get_all_report(self):
   	with self.engine.connect() as connection:
-  		sql_query = text("")
+  		sql_query = text("SELECT id, topic, description, entity_id, entity_type, user_id, created_at, status FROM public.report")
