@@ -78,10 +78,12 @@ def get_dataset_datails(dataset_name):
 			except:
 				result['is_bookmark'] = False
 
-			return {'ok': True, 'message': 'success', 'result': result}
+			return {'ok': True, 'message': 'success', 'result': result, 'is_authorized': True}
 			
 	except NotFound:
 		return {'ok': False, 'message': 'datasets not found'}
+	except NotAuthorized:
+		return {'ok': False, 'message': 'notAuthorized to see this dataset', 'is_authorized': False}
 	except:
 		return {'ok': False, 'message': 'flask api error'}
 

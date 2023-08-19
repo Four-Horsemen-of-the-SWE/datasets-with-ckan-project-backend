@@ -16,3 +16,14 @@ def create_report():
 		return {'ok': True, 'message': 'success.'}
 	else:
 		return {'ok': False, 'message': 'failed.'}
+
+# get user's reports
+@reports_route.route('/me', methods=['GET'])
+def get_all_report_for_user():
+	jwt_token = request.headers.get('Authorization')
+
+	ok, result = Report(jwt_token).get_all_report_for_user()
+	if ok:
+		return {'ok': True, 'message': 'success.', 'result': result}
+	else:
+		return {'ok': False, 'message': 'failed.'}
