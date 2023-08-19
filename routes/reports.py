@@ -27,3 +27,14 @@ def get_all_report_for_user():
 		return {'ok': True, 'message': 'success.', 'result': result}
 	else:
 		return {'ok': False, 'message': 'failed.'}
+
+# get all notification for user
+@reports_route.route('/notifications', methods=['GET'])
+def get_all_report_notification():
+	jwt_token = request.headers.get('Authorization')
+
+	ok, result = Report(jwt_token).get_all_report_notification()
+	if ok:
+		return {'ok': True, 'message': 'success.', 'result': result}
+	else:
+		return {'ok': False, 'message': 'failed.'}
