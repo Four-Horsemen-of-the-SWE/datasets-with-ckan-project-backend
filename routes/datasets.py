@@ -76,7 +76,7 @@ def get_dataset_datails(dataset_name):
 				isBookmark = ckan.action.am_following_dataset(id=dataset_name)
 				result['is_bookmark'] = isBookmark
 			except:
-				pass
+				result['is_bookmark'] = False
 
 			return {'ok': True, 'message': 'success', 'result': result}
 			
