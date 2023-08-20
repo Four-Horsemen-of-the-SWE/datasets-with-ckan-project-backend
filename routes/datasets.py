@@ -248,8 +248,6 @@ def search_datasets():
     if license is not None:
         filter_query += f' AND license_id:{license}'
 
-    print(dataset_name, filter_query)
-
     with ckan_connect() as ckan:
         result = {}
         user = User()
@@ -266,7 +264,7 @@ def search_datasets():
                 dataset['thumbnail'] = thumbnail['result']
             return jsonify({'ok': True, 'message': 'success', 'result': result['results']})
         else:
-            return jsonify({'ok': False, 'message': 'not found', 'result': [], 'dataset_name': dataset_name})
+            return jsonify({'ok': True, 'message': 'not found', 'result': [], 'dataset_name': dataset_name})
 
 
 
