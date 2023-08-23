@@ -21,6 +21,18 @@ def change_visibility():
 	payload = request.json
 	return Dataset(jwt_token).change_visibility(payload['dataset_id'], payload['visibility'])
 
+@datasets_route.route('is_private', methods=['GET'])
+def is_private():
+	dataset_id = request.args.get('id')
+	result = Dataset().is_private(dataset_id)
+
+	if result:
+		return {'ok': True, 'message': f'{dataset_id} is private'}
+	elif result is None:
+		return {'ok': False, 'message': f'{dataset_id} not found'}
+	else:
+		return {'ok': True, 'message': f'{dataset_id} is public'}
+
 # get all datasets, (only necessary information)
 # this function should called in homepage
 @datasets_route.route('/', methods=['GET'])
@@ -32,7 +44,7 @@ def get_datasets():
 		user = User()
 		for dataset in datasets:
 			# if dataset is public
-			if dataset['private'] == False:
+			if Dataset().is_private(dataset['id']) is not True:
 				thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 				result.append({
 					'author': user.get_user_name(user_id = dataset['creator_user_id']),
@@ -253,20 +265,23 @@ def search_datasets():
         filter_query += f' AND license_id:{license}'
 
     with ckan_connect() as ckan:
-        result = {}
+        result = []
         user = User()
-        result = ckan.action.package_search(q=dataset_name, fq=filter_query, sort=sort, include_private=False, rows=1000)
-        if result['count'] > 0:
-            for dataset in result['results']:
-                # get thumbnail
-                thumbnail = Thumbnail().get_thumbnail(dataset['id'])
+        searched_result = ckan.action.package_search(q=dataset_name, fq=filter_query, sort=sort, include_private=False, rows=1000)
+        if searched_result['count'] > 0:
+            for dataset in searched_result['results']:
+            	if Dataset().is_private(dataset['id']) is False:
+	                # get thumbnail
+	                thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 
-                # get user name (author)
-                dataset['author'] = user.get_user_name(user_id = dataset['creator_user_id'])
+	                # get user name (author)
+	                dataset['author'] = user.get_user_name(user_id = dataset['creator_user_id'])
 
-                # insert thumbnail into the dataset
-                dataset['thumbnail'] = thumbnail['result']
-            return jsonify({'ok': True, 'message': 'success', 'result': result['results']})
+	                # insert thumbnail into the dataset
+	                dataset['thumbnail'] = thumbnail['result']
+
+	                result.append(dataset)
+            return jsonify({'ok': True, 'message': 'success', 'result': result})
         else:
             return jsonify({'ok': True, 'message': 'not found', 'result': [], 'dataset_name': dataset_name})
 
