@@ -163,8 +163,6 @@ class Article(PostgreSQL):
         			'user_image_url': query_result['image_url']
 				}
 
-				print('1')
-
 				return result
 			except NoResultFound:
 				return []

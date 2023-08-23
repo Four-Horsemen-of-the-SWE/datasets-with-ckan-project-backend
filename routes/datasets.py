@@ -25,9 +25,10 @@ def change_visibility():
 # this function should called in homepage
 @datasets_route.route('/', methods=['GET'])
 def get_datasets():
+	limit = request.args.get('limit', 100)
 	with ckan_connect() as ckan:
 		result = []
-		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=12)
+		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=limit)
 		user = User()
 		for dataset in datasets:
 			# if dataset is public
@@ -81,12 +82,14 @@ def get_dataset_datails(dataset_name):
 				isBookmark = ckan.action.am_following_dataset(id=dataset_name)
 				result['is_bookmark'] = isBookmark
 			except:
-				pass
+				result['is_bookmark'] = False
 
-			return {'ok': True, 'message': 'success', 'result': result}
+			return {'ok': True, 'message': 'success', 'result': result, 'is_authorized': True}
 			
 	except NotFound:
 		return {'ok': False, 'message': 'datasets not found'}
+	except NotAuthorized:
+		return {'ok': False, 'message': 'notAuthorized to see this dataset', 'is_authorized': False}
 	except:
 		return {'ok': False, 'message': 'flask api error'}
 
@@ -249,8 +252,6 @@ def search_datasets():
     if license is not None:
         filter_query += f' AND license_id:{license}'
 
-    print(dataset_name, filter_query)
-
     with ckan_connect() as ckan:
         result = {}
         user = User()
@@ -267,7 +268,7 @@ def search_datasets():
                 dataset['thumbnail'] = thumbnail['result']
             return jsonify({'ok': True, 'message': 'success', 'result': result['results']})
         else:
-            return jsonify({'ok': False, 'message': 'not found', 'result': [], 'dataset_name': dataset_name})
+            return jsonify({'ok': True, 'message': 'not found', 'result': [], 'dataset_name': dataset_name})
 
 
 

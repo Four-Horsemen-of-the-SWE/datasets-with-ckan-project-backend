@@ -70,7 +70,6 @@ class Discussion(User):
         if hasattr(self, 'id'):
           r = self._is_already_voted(topic['id'], self.id)
           is_voted = r['is_voted']
-          print(r)
           if 'voted_type' in r:
             voted_type = r['voted_type']
         response.append({
@@ -137,8 +136,6 @@ class Discussion(User):
 
       if payload is None:
         return {'ok': False, 'message': 'payload are not provided.'}
-
-      print(topic_id)
 
       with self.engine.connect() as connection:
         query_string = text("UPDATE public.topic SET title=:title, body=:body, created=NOW() WHERE id=:topic_id")
