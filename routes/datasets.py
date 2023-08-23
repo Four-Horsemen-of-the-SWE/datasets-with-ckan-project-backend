@@ -19,11 +19,7 @@ datasets_route = Blueprint('datasets_route', __name__)
 def change_visibility():
 	jwt_token = request.headers.get('Authorization')
 	payload = request.json
-	result = Dataset(jwt_token).change_visibility(payload['dataset_id'], payload['visibility'])
-	if result:
-		return {'ok': True, 'message': 'success.'}
-	else:
-		return {'ok': False, 'message': 'failed.'}
+	return Dataset(jwt_token).change_visibility(payload['dataset_id'], payload['visibility'])
 
 # get all datasets, (only necessary information)
 # this function should called in homepage
@@ -196,8 +192,6 @@ def create_resource(dataset_id):
         return {'ok': True, 'message': 'create resource success.', 'result': results}
     # except:
     #    return {'ok': False, 'message': 'create resource failed.'}
-
-
 
 # update resource
 @datasets_route.route('/resources/<resource_id>', methods=['PUT'])

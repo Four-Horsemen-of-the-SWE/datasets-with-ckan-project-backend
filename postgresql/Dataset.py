@@ -14,16 +14,16 @@ class Dataset(PostgreSQL):
 
     # change visibility
     def change_visibility(self, dataset_id, visibility):
-        # try:
-            private = True if visibility == "private" else False
+        try:
+            is_private = True if visibility == "private" else False
             with self.engine.connect() as connection:
                 query_string = text("UPDATE public.package SET private=:visibility WHERE id=:dataset_id AND creator_user_id=:user_id")
-                connection.execute(query_string.bindparams(visibility = private, dataset_id = dataset_id, user_id = self.user.id))
+                connection.execute(query_string.bindparams(visibility = is_private, dataset_id = dataset_id, user_id = self.user.id))
                 connection.commit();
 
-                return True
-        # except:
-            # return False
+                return {'ok': True, 'message': f'dataset_id = dataset_id is now {"private" if is_private else "public"}'}
+        except:
+            return {'ok': False, 'message': 'failed'}
 
     # store a download statistic
     def collect_download_static(self, dataset_id: str = None, resource_id: str = None):
