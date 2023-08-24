@@ -44,7 +44,7 @@ def get_datasets():
 		user = User()
 		for dataset in datasets:
 			# if dataset is public
-			if Dataset().is_private(dataset['id']) is not True:
+			if Dataset().is_public(dataset['id']):
 				thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 				result.append({
 					'author': user.get_user_name(user_id = dataset['creator_user_id']),
@@ -89,6 +89,9 @@ def get_dataset_datails(dataset_name):
 			# insert author name into result
 			result['author'] = user.get_user_name(result['creator_user_id'])
 
+			# replace visibility value
+			result['private'] = Dataset().is_private(result['id'])
+
 			# check if datasets bookmarked
 			try:
 				isBookmark = ckan.action.am_following_dataset(id=dataset_name)
@@ -113,9 +116,13 @@ def create_datasets():
 	payload = request.json
 	user = User(jwt_token=token)
 
+	default_visibility = request.args.get('default_visibility', None)
+
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
 			result = ckan.action.package_create(**payload)
+			if default_visibility is not None:
+				Dataset(jwt_token=token).change_visibility(result['id'], default_visibility)
 			return {'ok': True, 'message': 'success', 'result': result}
 		except ValidationError:
 			return {'ok': False, 'message': 'name is already in use.'}
@@ -136,17 +143,30 @@ def update_dataset(dataset_name):
 		payload['name'] = payload['title'].lower().replace(' ', '-')
 
 	with ckan_connect(api_key=user.api_token) as ckan:
-		# try:
-		result = ckan.action.package_patch(id=dataset_name, **payload)
-		return {'ok': True, 'message': 'success', 'result': result}
-		'''
+		try:
+			# if the dataset is private, turn into public then turn back
+			dataset = Dataset(token)
+			dataset_id = payload['id']
+			payload.pop('id', None)
+			payload.pop('private', None)
+			is_private = False
+			if dataset.is_private(dataset_id):
+				dataset.change_visibility(dataset_id, 'public')
+				is_private = True
+
+			# then update dataset
+			result = ckan.action.package_patch(id=dataset_name, **payload)
+			# then turn it back to public
+			if is_private is True:
+				dataset.change_visibility(dataset_id, 'private')
+			return {'ok': True, 'message': 'success', 'result': result}
+			
 		except CKANAPIError:
 			return {'ok': False, 'message': 'ckan api error'}
 		except NotAuthorized:
 			return {'ok': False, 'message': 'access denied'}
 		except NotFound:
 			return {'ok': False, 'message': f'dataset = {dataset_name} not found'}
-		'''
 
 # delete dataset
 @datasets_route.route('/<dataset_name>', methods=['DELETE'])
@@ -270,7 +290,7 @@ def search_datasets():
         searched_result = ckan.action.package_search(q=dataset_name, fq=filter_query, sort=sort, include_private=False, rows=1000)
         if searched_result['count'] > 0:
             for dataset in searched_result['results']:
-            	if Dataset().is_private(dataset['id']) is False:
+            	if Dataset().is_public(dataset['id']):
 	                # get thumbnail
 	                thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 
@@ -332,6 +352,7 @@ def create_dataset_bookmarked(dataset_name):
 @datasets_route.route('/<dataset_name>/bookmark', methods=['DELETE'])
 def delete_dataset_bookmarked(dataset_name):
 	token = request.headers.get('Authorization')
+
 	if token is None:
 		return {'ok': False, 'message': 'token not provide'}
 	user = User(jwt_token=token)

@@ -25,6 +25,19 @@ class Dataset(PostgreSQL):
         except:
             return None
 
+    # is public dataset
+    def is_public(self, dataset_id):
+        try:
+            with self.engine.connect() as connection:
+                query_string = text("SELECT private FROM public.package WHERE id = :dataset_id")
+                result = connection.execute(query_string.bindparams(dataset_id = dataset_id)).mappings().one()
+                if not result['private']:
+                    return True
+                else:
+                    return False
+        except:
+            return None
+
     # change visibility
     def change_visibility(self, dataset_id, visibility):
         try:
@@ -34,8 +47,8 @@ class Dataset(PostgreSQL):
                 connection.execute(query_string.bindparams(visibility = is_private, dataset_id = dataset_id, user_id = self.user.id))
                 connection.commit();
 
-                return {'ok': True, 'message': f'dataset_id = dataset_id is now {"private" if is_private else "public"}'}
-        except:
+                return {'ok': True, 'message': f'dataset_id = {dataset_id} is now {"private" if is_private else "public"}'}
+        except NoResultFound:
             return {'ok': False, 'message': 'failed'}
 
     # store a download statistic
