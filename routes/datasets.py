@@ -15,6 +15,24 @@ import uuid
 
 datasets_route = Blueprint('datasets_route', __name__)
 
+@datasets_route.route('/visibility', methods=['POST'])
+def change_visibility():
+	jwt_token = request.headers.get('Authorization')
+	payload = request.json
+	return Dataset(jwt_token).change_visibility(payload['dataset_id'], payload['visibility'])
+
+@datasets_route.route('is_private', methods=['GET'])
+def is_private():
+	dataset_id = request.args.get('id')
+	result = Dataset().is_private(dataset_id)
+
+	if result:
+		return {'ok': True, 'message': f'{dataset_id} is private'}
+	elif result is None:
+		return {'ok': False, 'message': f'{dataset_id} not found'}
+	else:
+		return {'ok': True, 'message': f'{dataset_id} is public'}
+
 # get all datasets, (only necessary information)
 # this function should called in homepage
 @datasets_route.route('/', methods=['GET'])
@@ -26,7 +44,7 @@ def get_datasets():
 		user = User()
 		for dataset in datasets:
 			# if dataset is public
-			if dataset['private'] == False:
+			if Dataset().is_public(dataset['id']):
 				thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 				result.append({
 					'author': user.get_user_name(user_id = dataset['creator_user_id']),
@@ -71,6 +89,9 @@ def get_dataset_datails(dataset_name):
 			# insert author name into result
 			result['author'] = user.get_user_name(result['creator_user_id'])
 
+			# replace visibility value
+			result['private'] = Dataset().is_private(result['id'])
+
 			# check if datasets bookmarked
 			try:
 				isBookmark = ckan.action.am_following_dataset(id=dataset_name)
@@ -95,9 +116,13 @@ def create_datasets():
 	payload = request.json
 	user = User(jwt_token=token)
 
+	default_visibility = request.args.get('default_visibility', None)
+
 	with ckan_connect(api_key=user.api_token) as ckan:
 		try:
 			result = ckan.action.package_create(**payload)
+			if default_visibility is not None:
+				Dataset(jwt_token=token).change_visibility(result['id'], default_visibility)
 			return {'ok': True, 'message': 'success', 'result': result}
 		except ValidationError:
 			return {'ok': False, 'message': 'name is already in use.'}
@@ -118,17 +143,29 @@ def update_dataset(dataset_name):
 		payload['name'] = payload['title'].lower().replace(' ', '-')
 
 	with ckan_connect(api_key=user.api_token) as ckan:
-		# try:
-		result = ckan.action.package_patch(id=dataset_name, **payload)
-		return {'ok': True, 'message': 'success', 'result': result}
-		'''
+		try:
+			# if the dataset is private, turn into public then turn back
+			dataset = Dataset(token)
+			dataset_id = payload['id']
+			payload.pop('id', None)
+			is_private = False
+			if dataset.is_private(dataset_id):
+				dataset.change_visibility(dataset_id, 'public')
+				is_private = True
+
+			# then update dataset
+			result = ckan.action.package_patch(id=dataset_name, **payload)
+			# then turn it back to public
+			if is_private is True:
+				dataset.change_visibility(dataset_id, 'private')
+			return {'ok': True, 'message': 'success', 'result': result}
+			
 		except CKANAPIError:
 			return {'ok': False, 'message': 'ckan api error'}
 		except NotAuthorized:
 			return {'ok': False, 'message': 'access denied'}
 		except NotFound:
 			return {'ok': False, 'message': f'dataset = {dataset_name} not found'}
-		'''
 
 # delete dataset
 @datasets_route.route('/<dataset_name>', methods=['DELETE'])
@@ -190,8 +227,6 @@ def create_resource(dataset_id):
     # except:
     #    return {'ok': False, 'message': 'create resource failed.'}
 
-
-
 # update resource
 @datasets_route.route('/resources/<resource_id>', methods=['PUT'])
 @cross_origin()
@@ -249,20 +284,23 @@ def search_datasets():
         filter_query += f' AND license_id:{license}'
 
     with ckan_connect() as ckan:
-        result = {}
+        result = []
         user = User()
-        result = ckan.action.package_search(q=dataset_name, fq=filter_query, sort=sort, include_private=False, rows=1000)
-        if result['count'] > 0:
-            for dataset in result['results']:
-                # get thumbnail
-                thumbnail = Thumbnail().get_thumbnail(dataset['id'])
+        searched_result = ckan.action.package_search(q=dataset_name, fq=filter_query, sort=sort, include_private=False, rows=1000)
+        if searched_result['count'] > 0:
+            for dataset in searched_result['results']:
+            	if Dataset().is_public(dataset['id']):
+	                # get thumbnail
+	                thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 
-                # get user name (author)
-                dataset['author'] = user.get_user_name(user_id = dataset['creator_user_id'])
+	                # get user name (author)
+	                dataset['author'] = user.get_user_name(user_id = dataset['creator_user_id'])
 
-                # insert thumbnail into the dataset
-                dataset['thumbnail'] = thumbnail['result']
-            return jsonify({'ok': True, 'message': 'success', 'result': result['results']})
+	                # insert thumbnail into the dataset
+	                dataset['thumbnail'] = thumbnail['result']
+
+	                result.append(dataset)
+            return jsonify({'ok': True, 'message': 'success', 'result': result})
         else:
             return jsonify({'ok': True, 'message': 'not found', 'result': [], 'dataset_name': dataset_name})
 
@@ -313,6 +351,7 @@ def create_dataset_bookmarked(dataset_name):
 @datasets_route.route('/<dataset_name>/bookmark', methods=['DELETE'])
 def delete_dataset_bookmarked(dataset_name):
 	token = request.headers.get('Authorization')
+
 	if token is None:
 		return {'ok': False, 'message': 'token not provide'}
 	user = User(jwt_token=token)
@@ -369,40 +408,3 @@ def get_download_statistic(dataset_id):
 		return {'ok': True, 'message': 'success.', 'result': result['result'], 'total_download': result['total_download']}
 	else:
 		return {'ok': False, 'message': 'failed.'}
-
-'''
-# update resource
-@datasets_route.route('/resources/<resource_id>', methods=['PUT'])
-@cross_origin()
-def update_resource(resource_id):
-	token = request.headers.get('Authorization')
-	user = User(jwt_token=token)
-
-	payload = {
-		'id': resource_id,
-	}
-
-	if 'name' in request.form:
-		payload['name'] = request.form['name']
-	if 'description' in request.form:
-		payload['description'] = request.form['description']
-	if 'upload' in request.files:
-		upload = request.files['upload']
-		# save the file into temp folder
-		filename = upload.filename
-		file_path = os.path.join(os.path.abspath('file_upload_temp'), filename)
-		upload.save(file_path)
-		payload['upload'] = open(file_path, 'rb')
-
-	with ckan_connect(api_key=user.api_token) as ckan:
-		result = ckan.action.resource_patch(**payload)
-		if result is not None:
-			try:
-				# close file
-				if 'upload' in payload:
-					payload['upload'].close()
-					os.remove(file_path)
-				return {'ok': True, 'message': 'update resource success', 'result': result}
-			except OSError as e:
-				print(f'Error removing file: {e.filename} - {e.strerror}')
-'''
