@@ -6,26 +6,15 @@ from ckanapi import ValidationError, SearchError
 
 users_route = Blueprint('users_route', __name__)
 
-# make user is admin
-@users_route.route('/<user_id>/admin', methods=['POST'])
-def make_user_admin(user_id):
+# change role
+@users_route.route('/role', methods=['POST'])
+def change_role():
 	try:
 		jwt_token = request.headers.get('Authorization')
+		payload = request.json
 		user = User(jwt_token=jwt_token)
 
-		result = user.make_user_admin(user_id)
-		return result
-	except:
-		return {'ok': False, 'message': 'backend failed'}
-
-# delete user is admin
-@users_route.route('/<user_id>/admin', methods=['DELETE'])
-def remove_user_admin(user_id):
-	try:
-		jwt_token = request.headers.get('Authorization')
-		user = User(jwt_token=jwt_token)
-
-		result = user.remove_user_admin(user_id)
+		result = user.change_role(payload['user_id'], payload['role'])
 		return result
 	except:
 		return {'ok': False, 'message': 'backend failed'}
@@ -52,6 +41,17 @@ def get_users():
 	
 	with ckan_connect(api_key=api_key) as ckan:
 		result = ckan.action.user_list()
+		return {'ok': True, 'result': result}
+
+# search user (auto complete)
+@users_route.route('/auto_complete', methods=['GET'])
+def searhc_user():
+	api_key = request.headers.get('Authorization')
+	q = request.args.get('q')
+	limit = request.args.get('limit', 10)
+
+	with ckan_connect(api_key=api_key) as ckan:
+		result = ckan.action.user_autocomplete(q=q, limit=limit)
 		return {'ok': True, 'result': result}
 
 # create users
