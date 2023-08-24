@@ -148,7 +148,6 @@ def update_dataset(dataset_name):
 			dataset = Dataset(token)
 			dataset_id = payload['id']
 			payload.pop('id', None)
-			payload.pop('private', None)
 			is_private = False
 			if dataset.is_private(dataset_id):
 				dataset.change_visibility(dataset_id, 'public')
