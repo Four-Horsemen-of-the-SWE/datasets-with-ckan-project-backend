@@ -2,6 +2,7 @@ import sys, os
 from flask import Blueprint, request
 from ckan.ckan_connect import ckan_connect
 from postgresql.User import User
+from postgresql.Dataset import Dataset
 from ckanapi import ValidationError, SearchError
 
 users_route = Blueprint('users_route', __name__)
@@ -118,18 +119,23 @@ def get_user_details(user_name):
 # get a package that user created
 @users_route.route('/datasets', methods=['GET'])
 def get_user_datasets():
-	# try:
+	try:
 		token = request.headers.get('Authorization')		
 		user = User(jwt_token=token)
 		
 		with ckan_connect() as ckan:
-			# return ckan.action.package_collaborator_list_for_user(id=user.id)
 			datasets = ckan.action.package_search(fq=f'creator_user_id:{user.id}')
+			
+			checker = Dataset()
+			for index, item in enumerate(datasets['results']):
+				if checker.is_private(item['id']):
+					datasets['results'][index]['private'] = True
+
 			return {'ok': True, 'message': 'success', 'count': datasets['count'], 'result': datasets['results']}
-	# except SearchError:
-		# return {'ok': False, 'message': 'token not provided. user_is is empty or null'}
-	# except:
-		# return {'ok': False, 'message': 'token not provided'}
+	except SearchError:
+		return {'ok': False, 'message': 'token not provided. user_is is empty or null'}
+	except:
+		return {'ok': False, 'message': 'token not provided'}
 
 # get a datasets that user bookmark
 @users_route.route('/bookmark', methods=['GET'])
