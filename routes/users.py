@@ -18,7 +18,7 @@ def make_user_admin(user_id):
 	except:
 		return {'ok': False, 'message': 'backend failed'}
 
-# make user is admin
+# delete user is admin
 @users_route.route('/<user_id>/admin', methods=['DELETE'])
 def remove_user_admin(user_id):
 	try:
@@ -51,7 +51,8 @@ def get_users():
 	api_key = request.headers.get('Authorization')
 	
 	with ckan_connect(api_key=api_key) as ckan:
-		return ckan.action.user_list()
+		result = ckan.action.user_list()
+		return {'ok': True, 'result': result}
 
 # create users
 @users_route.route('/', methods=['POST'])
