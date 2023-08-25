@@ -11,6 +11,7 @@ from routes.licenses import licenses_route
 from routes.votes import votes_route
 from routes.articles import article_route
 from routes.reports import reports_route
+from routes.admins import admins_route
 from dotenv import load_dotenv
 
 # load .env file
@@ -47,6 +48,7 @@ app.register_blueprint(licenses_route, url_prefix=f'{API_ENDPOINT}/licenses')
 app.register_blueprint(votes_route, url_prefix=f'{API_ENDPOINT}/votes')
 app.register_blueprint(article_route, url_prefix=f'{API_ENDPOINT}/articles')
 app.register_blueprint(reports_route, url_prefix=f'{API_ENDPOINT}/reports')
+app.register_blueprint(admins_route, url_prefix=f'{API_ENDPOINT}/admins')
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0', port=5001, debug=True)
