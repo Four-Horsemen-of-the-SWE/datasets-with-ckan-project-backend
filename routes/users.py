@@ -7,26 +7,15 @@ from ckanapi import ValidationError, SearchError
 
 users_route = Blueprint('users_route', __name__)
 
-# make user is admin
-@users_route.route('/<user_id>/admin', methods=['POST'])
-def make_user_admin(user_id):
+# change role
+@users_route.route('/role', methods=['POST'])
+def change_role():
 	try:
 		jwt_token = request.headers.get('Authorization')
+		payload = request.json
 		user = User(jwt_token=jwt_token)
 
-		result = user.make_user_admin(user_id)
-		return result
-	except:
-		return {'ok': False, 'message': 'backend failed'}
-
-# make user is admin
-@users_route.route('/<user_id>/admin', methods=['DELETE'])
-def remove_user_admin(user_id):
-	try:
-		jwt_token = request.headers.get('Authorization')
-		user = User(jwt_token=jwt_token)
-
-		result = user.remove_user_admin(user_id)
+		result = user.change_role(payload['user_id'], payload['role'])
 		return result
 	except:
 		return {'ok': False, 'message': 'backend failed'}
@@ -48,11 +37,33 @@ def check_if_user_is_admin():
 # get all users
 @users_route.route('/', methods=['GET'])
 def get_users():
-	# get a authorization (api_key) from header
 	api_key = request.headers.get('Authorization')
 	
 	with ckan_connect(api_key=api_key) as ckan:
-		return ckan.action.user_list()
+		result = ckan.action.user_list()
+		return {'ok': True, 'result': result}
+
+# search user (auto complete)
+@users_route.route('/auto_complete', methods=['GET'])
+def searhc_user():
+	api_key = request.headers.get('Authorization')
+	q = request.args.get('q')
+	include_admin = request.args.get('include_admin', False)
+
+	limit = request.args.get('limit', 10)
+
+	with ckan_connect(api_key=api_key) as ckan:
+		result = []
+		if include_admin is True:
+			result = ckan.action.user_autocomplete(q=q, limit=limit)
+		else:
+			print('')
+			# get only member
+			query_result = ckan.action.user_list(q=q)
+			for user in query_result:
+				if not user['sysadmin']:
+					result.append(user)
+		return {'ok': True, 'result': result}
 
 # create users
 @users_route.route('/', methods=['POST'])
