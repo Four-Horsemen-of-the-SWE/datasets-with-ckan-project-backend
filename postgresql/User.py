@@ -127,5 +127,3 @@ class User(PostgreSQL):
 			query_string = "SELECT name FROM public.user WHERE id = '%s'" % user_id
 			result = connection.execute(text(query_string)).mappings().one()
 			return result['name']
-
-

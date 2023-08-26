@@ -36,7 +36,6 @@ def check_if_user_is_admin():
 # get all users
 @users_route.route('/', methods=['GET'])
 def get_users():
-	# get a authorization (api_key) from header
 	api_key = request.headers.get('Authorization')
 	
 	with ckan_connect(api_key=api_key) as ckan:
@@ -48,10 +47,21 @@ def get_users():
 def searhc_user():
 	api_key = request.headers.get('Authorization')
 	q = request.args.get('q')
+	include_admin = request.args.get('include_admin', False)
+
 	limit = request.args.get('limit', 10)
 
 	with ckan_connect(api_key=api_key) as ckan:
-		result = ckan.action.user_autocomplete(q=q, limit=limit)
+		result = []
+		if include_admin is True:
+			result = ckan.action.user_autocomplete(q=q, limit=limit)
+		else:
+			print('')
+			# get only member
+			query_result = ckan.action.user_list(q=q)
+			for user in query_result:
+				if not user['sysadmin']:
+					result.append(user)
 		return {'ok': True, 'result': result}
 
 # create users
