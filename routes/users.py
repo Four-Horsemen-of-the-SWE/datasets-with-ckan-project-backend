@@ -2,6 +2,7 @@ import sys, os
 from flask import Blueprint, request
 from ckan.ckan_connect import ckan_connect
 from postgresql.User import User
+from postgresql.Dataset import Dataset
 from ckanapi import ValidationError, SearchError
 
 users_route = Blueprint('users_route', __name__)
@@ -56,7 +57,6 @@ def searhc_user():
 		if include_admin is True:
 			result = ckan.action.user_autocomplete(q=q, limit=limit)
 		else:
-			print('')
 			# get only member
 			query_result = ckan.action.user_list(q=q)
 			for user in query_result:
@@ -122,25 +122,30 @@ def login():
 # get a user details (using a ckanapi)
 @users_route.route('/<user_name>', methods=['GET'])
 def get_user_details(user_name):
+	jwt_token = request.headers.get('Authorization', None)
 	with ckan_connect() as ckan:
-		result = ckan.action.user_show(id=user_name, include_datasets=True, include_num_followers=True)
-		return {'ok': True, 'message': 'success', 'result': result}
+		ckan_result = ckan.action.user_show(id=user_name, include_datasets=True, include_num_followers=True)
+		result = []
+		dataset_instance = Dataset()
+		for dataset in ckan_result['datasets']:
+			result.append({
+				'id': dataset['id'],
+				'name': dataset['name'],
+				'title': dataset['title'],
+				'notes': dataset['notes'],
+				'version': dataset['version'],
+				'private': dataset_instance.is_private(dataset['id']),
+				'creator_user_id': dataset['creator_user_id'],
+				'metadata_created': dataset['metadata_created'],
+				'metadata_modified': dataset['metadata_modified']
+			})
 
-# get a package that user created
-@users_route.route('/datasets', methods=['GET'])
-def get_user_datasets():
-	# try:
-		token = request.headers.get('Authorization')		
-		user = User(jwt_token=token)
-		
-		with ckan_connect() as ckan:
-			# return ckan.action.package_collaborator_list_for_user(id=user.id)
-			datasets = ckan.action.package_search(fq=f'creator_user_id:{user.id}')
-			return {'ok': True, 'message': 'success', 'count': datasets['count'], 'result': datasets['results']}
-	# except SearchError:
-		# return {'ok': False, 'message': 'token not provided. user_is is empty or null'}
-	# except:
-		# return {'ok': False, 'message': 'token not provided'}
+		# if user see their own dataset
+		if jwt_token is not None:
+			return {'ok': True, 'message': 'success', 'result': result}
+		else:
+			public_result = filter(lambda dataset: dataset_instance.is_public(dataset['id']), result)
+			return {'ok': True, 'message': 'success', 'result': list(public_result)}
 
 # get a datasets that user bookmark
 @users_route.route('/bookmark', methods=['GET'])

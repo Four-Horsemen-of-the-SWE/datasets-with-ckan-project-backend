@@ -41,12 +41,11 @@ def get_datasets():
 	limit = request.args.get('limit', 100)
 	include_private = request.args.get('include_private', False)
 
-
-
 	with ckan_connect() as ckan:
 		result = []
 		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=limit)
 		user = User()
+		dataset_instance = Dataset()
 		for dataset in datasets:
 			thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 			result.append({
@@ -59,7 +58,7 @@ def get_datasets():
 				'id': dataset['id'],
 				'tags': dataset['tags'],
 				'license_title': dataset['license_title'],
-				'private': dataset['private'],
+				'private': dataset_instance.is_private(dataset['id']),
 				'thumbnail': thumbnail['result']
 			})
 
@@ -74,7 +73,7 @@ def get_datasets():
 				return {'ok': False, 'message': 'unauthorized to see private dataset.'}
 			return {'ok': True, 'message': 'success', 'result': result}
 		else:
-			public_datasets = filter(lambda dataset: Dataset().is_public(dataset['id']) is True, result)
+			public_datasets = filter(lambda dataset: dataset_instance.is_public(dataset['id']) is True, result)
 			return {'ok': True, 'message': 'success', 'result': list(public_datasets)}
 			
 			
