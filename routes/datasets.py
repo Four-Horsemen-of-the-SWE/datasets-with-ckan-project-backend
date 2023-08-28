@@ -37,29 +37,47 @@ def is_private():
 # this function should called in homepage
 @datasets_route.route('/', methods=['GET'])
 def get_datasets():
+	jwt_token = request.headers.get('Authorization', None)
 	limit = request.args.get('limit', 100)
+	include_private = request.args.get('include_private', False)
+
+
+
 	with ckan_connect() as ckan:
 		result = []
 		datasets = ckan.action.current_package_list_with_resources(all_fields=True, limit=limit)
 		user = User()
 		for dataset in datasets:
-			# if dataset is public
-			if Dataset().is_public(dataset['id']):
-				thumbnail = Thumbnail().get_thumbnail(dataset['id'])
-				result.append({
-					'author': user.get_user_name(user_id = dataset['creator_user_id']),
-					'metadata_created': dataset['metadata_created'],
-					'metadata_modified': dataset['metadata_modified'],
-					'name': dataset['name'],
-					'title': dataset['title'],
-					'notes': dataset['notes'],
-					'id': dataset['id'],
-					'tags': dataset['tags'],
-					'license_title': dataset['license_title'],
-					'private': dataset['private'],
-					'thumbnail': thumbnail['result']
-				})
-		return {'ok': True, 'message': 'success', 'result': result}
+			thumbnail = Thumbnail().get_thumbnail(dataset['id'])
+			result.append({
+				'author': user.get_user_name(user_id = dataset['creator_user_id']),
+				'metadata_created': dataset['metadata_created'],
+				'metadata_modified': dataset['metadata_modified'],
+				'name': dataset['name'],
+				'title': dataset['title'],
+				'notes': dataset['notes'],
+				'id': dataset['id'],
+				'tags': dataset['tags'],
+				'license_title': dataset['license_title'],
+				'private': dataset['private'],
+				'thumbnail': thumbnail['result']
+			})
+
+		# filter by visibility
+		if include_private:
+			if jwt_token is None:
+				# return not authorize if access private without admin
+				return {'ok': False, 'message': 'unauthorized to see private dataset.'}
+			user = User(jwt_token=jwt_token)
+			if user.is_admin() is not True:
+				# return not authorize if access private without admin
+				return {'ok': False, 'message': 'unauthorized to see private dataset.'}
+			return {'ok': True, 'message': 'success', 'result': result}
+		else:
+			public_datasets = filter(lambda dataset: Dataset().is_public(dataset['id']) is True, result)
+			return {'ok': True, 'message': 'success', 'result': list(public_datasets)}
+			
+			
 
 # get dataset deails, (giving a name to api, then return that dataset)
 # since 27/6/2023 @JCSNP. this function will return a thumbnails
