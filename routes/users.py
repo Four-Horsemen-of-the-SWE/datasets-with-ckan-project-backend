@@ -142,10 +142,12 @@ def get_user_details(user_name):
 
 		# if user see their own dataset
 		if jwt_token is not None:
-			return {'ok': True, 'message': 'success', 'result': result}
+			ckan_result['datasets'] = result
+			return {'ok': True, 'message': 'success', 'result': ckan_result}
 		else:
 			public_result = filter(lambda dataset: dataset_instance.is_public(dataset['id']), result)
-			return {'ok': True, 'message': 'success', 'result': list(public_result)}
+			ckan_result['datasets'] = list(public_result)
+			return {'ok': True, 'message': 'success', 'result': ckan_result}
 
 # get a datasets that user bookmark
 @users_route.route('/bookmark', methods=['GET'])
