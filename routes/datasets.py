@@ -303,23 +303,48 @@ def search_datasets():
     with ckan_connect() as ckan:
         result = []
         user = User()
-        searched_result = ckan.action.package_search(q=dataset_name, fq=filter_query, sort=sort, include_private=False, rows=1000)
-        if searched_result['count'] > 0:
-            for dataset in searched_result['results']:
-            	if Dataset().is_public(dataset['id']):
-	                # get thumbnail
-	                thumbnail = Thumbnail().get_thumbnail(dataset['id'])
+        dataset_instance = Dataset()
+        if sort == "most_downloaded":
+        	searched_result = ckan.action.package_search(q=dataset_name, fq=filter_query, include_private=False, rows=1000)
+        	if searched_result['count'] > 0:
+        		for dataset in searched_result['results']:
+        			if Dataset().is_public(dataset['id']):
+        				# get thumbnail
+        				thumbnail = Thumbnail().get_thumbnail(dataset['id'])
 
-	                # get user name (author)
-	                dataset['author'] = user.get_user_name(user_id = dataset['creator_user_id'])
+        				# get user name (author)
+        				dataset['author'] = user.get_user_name(user_id = dataset['creator_user_id'])
 
-	                # insert thumbnail into the dataset
-	                dataset['thumbnail'] = thumbnail['result']
+        				# insert thumbnail into dataset
+        				dataset['thumbnail'] = thumbnail['result']
 
-	                result.append(dataset)
-            return jsonify({'ok': True, 'message': 'success', 'result': result})
+        				# get download
+        				dataset['download'] = dataset_instance.get_download_statistic(dataset['id'])['total_download']
+
+        				result.append(dataset)
+        		sorted_result = sorted(result, key=lambda item: item['download'], reverse=True)
+
+        		return jsonify({'ok': True, 'message': 'success', 'result': sorted_result})
+        	else:
+        		return jsonify({'ok': True, 'message': 'not found', 'result': [], 'dataset_name': dataset_name})
         else:
-            return jsonify({'ok': True, 'message': 'not found', 'result': [], 'dataset_name': dataset_name})
+	        searched_result = ckan.action.package_search(q=dataset_name, fq=filter_query, sort=sort, include_private=False, rows=1000)
+	        if searched_result['count'] > 0:
+	            for dataset in searched_result['results']:
+	            	if Dataset().is_public(dataset['id']):
+		                # get thumbnail
+		                thumbnail = Thumbnail().get_thumbnail(dataset['id'])
+
+		                # get user name (author)
+		                dataset['author'] = user.get_user_name(user_id = dataset['creator_user_id'])
+
+		                # insert thumbnail into the dataset
+		                dataset['thumbnail'] = thumbnail['result']
+
+		                result.append(dataset)
+	            return jsonify({'ok': True, 'message': 'success', 'result': result})
+	        else:
+	            return jsonify({'ok': True, 'message': 'not found', 'result': [], 'dataset_name': dataset_name})
 
 
 
