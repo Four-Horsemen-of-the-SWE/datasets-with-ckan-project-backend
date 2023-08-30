@@ -64,7 +64,6 @@ class Dataset(PostgreSQL):
             return True
 
     # get a download statistic from selected dataset_id.
-    # it's return date by date
     def get_download_statistic(self, dataset_id: str = None):
     	if dataset_id is None:
     		return False
