@@ -29,7 +29,7 @@ class User(PostgreSQL):
 		self.image: str
 		self.jwt_token: str
 		if jwt_token is not None:
-			self._verify_token(jwt_token)		
+			self._verify_token(jwt_token)
 
 	def _verify_password(self, password, pasword_hashed):
 		if pbkdf2_sha512.verify(password, pasword_hashed):
@@ -51,6 +51,20 @@ class User(PostgreSQL):
 				return False
 		except jwt.exceptions.DecodeError:
 			return False
+
+	# check incoming password with in database
+	def valid_password(self, password):
+		with self.engine.connect() as connection:
+			try:
+				# fist get a password in database with user_id
+				query_string = text("SELECT id, password FROM public.user WHERE id = :user_id")
+				result = connection.execute(query_string.bindparams(user_id = self.id)).mappings().one()
+				if self._verify_password(password, result['password']):
+					return True
+				else:
+					return False
+			except:
+				return False
 
 
 	def _check_authorize(self, token):
@@ -117,7 +131,7 @@ class User(PostgreSQL):
 	def is_admin(self):
 		user_details = self.get_user_details(self.jwt_token)
 		return user_details['is_admin'] == True
-	        
+
 	# get user name by id
 	def get_user_name(self, user_id: str = None):
 		if user_id is None:
@@ -127,3 +141,30 @@ class User(PostgreSQL):
 			query_string = "SELECT name FROM public.user WHERE id = '%s'" % user_id
 			result = connection.execute(text(query_string)).mappings().one()
 			return result['name']
+			
+	# check if username exists
+	def _check_if_username_exists(self, username):
+		try:
+			with self.engine.connect() as connection:
+				query_string = text("SELECT name FROM public.user WHERE name = :username")
+				result = connection.execute(query_string.bindparams(username = username)).mappings().one()
+				if result:
+					return True
+				else:
+					return False
+		except:
+			return None
+  
+  # get change username
+	def change_username(self, new_username):
+		try:
+			if self._check_if_username_exists(new_username):
+				return None
+			with self.engine.connect() as connection:
+				query_string = text("UPDATE public.user SET name=:new_username WHERE id = :user_id")
+				connection.execute(query_string.bindparams(user_id = self.id, new_username = new_username))
+				connection.commit()
+
+				return True
+		except:
+			return False

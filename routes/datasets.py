@@ -434,11 +434,7 @@ def collect_download_static(dataset_id):
 	jwt_token = request.headers.get('Authorization')
 	dataset = Dataset(jwt_token=jwt_token)
 
-	result = dataset.collect_download_static(dataset_id)
-	if result:
-		return {'ok': True, 'message': 'success.'}
-	else:
-		return {'ok': False, 'message': 'failed.'}
+	return dataset.collect_download_static(dataset_id)
 
 # get download statistic, (for dataset view page)
 @datasets_route.route('/<dataset_id>/download', methods=['GET'])

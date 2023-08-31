@@ -53,15 +53,23 @@ class Dataset(PostgreSQL):
 
     # store a download statistic
     def collect_download_static(self, dataset_id: str = None, resource_id: str = None):
-        with self.engine.connect() as connection:
-            user_id = None
-            if hasattr(self, 'user'):
-            	user_id = self.user.id if hasattr(self.user, 'id') else None
+        try:
+            with self.engine.connect() as connection:
+                _id = uuid.uuid4()
+                user_id = None
+                if hasattr(self, 'user'):
+                	user_id = self.user.id if hasattr(self.user, 'id') else None
 
-            query_string = "INSERT INTO public.package_download_log(id, package_id, resource_id, user_id) VALUES ('%s', '%s', '%s', '%s')" % (uuid.uuid4(), dataset_id, resource_id, user_id)
-            connection.execute(text(query_string))
-            connection.commit()
-            return True
+                query_string = "INSERT INTO public.package_download_log(id, package_id, resource_id, user_id) VALUES ('%s', '%s', '%s', '%s')" % (_id, dataset_id, resource_id, user_id)
+                connection.execute(text(query_string))
+                connection.commit()
+
+                # get the download statistic then return to client
+                result = self.get_download_statistic(dataset_id = dataset_id)
+
+                return {'ok': True, 'message': 'success', 'result': result['result'], 'total_download': result['total_download']}
+        except:
+            return {'ok': False, 'message': 'failed'}
 
     # get a download statistic from selected dataset_id.
     def get_download_statistic(self, dataset_id: str = None):
@@ -82,5 +90,5 @@ class Dataset(PostgreSQL):
     			})
 
 
-    		return {'ok': True, 'result': download_result, 'total_download': download_total}
+    		return {'ok': True, 'message': 'success', 'result': download_result, 'total_download': download_total}
 
