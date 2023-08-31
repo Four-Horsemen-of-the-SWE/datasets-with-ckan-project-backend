@@ -171,3 +171,47 @@ def get_user_organizations():
 			return ckan.action.organization_list_for_user(id=user.id)
 	except:
 		return {'ok': False, 'message': 'token not provided'}
+
+# update a user details (except username, password)
+@users_route.route('/update', methods=['POST'])
+def update_user():
+	try:
+		token = request.headers.get('Authorization')
+		payload = request.json
+		user = User(jwt_token=token)
+		payload['id'] = user.id
+		with ckan_connect() as ckan:
+			result = ckan.action.user_patch(**payload)
+			return {'ok': True, 'message': 'success', 'result': result}
+	except:
+		return {'ok': False, 'message': 'backend failed'}
+
+# change password
+@users_route.route('/password', methods=['POST'])
+def change_password():
+	token = request.headers.get('Authorization')
+	payload = request.json
+	user = User(jwt_token=token)
+	# fist check if old password is valid. (ambatukam)
+	if user.valid_password(payload['old_password']):
+		with ckan_connect() as ckan:
+			body = {'id': user.id, 'password': payload['new_password']}
+			result = ckan.action.user_patch(**body)
+			return {'ok': True, 'message': 'success'}
+	else:
+		return {'ok': False, 'message': 'old password is not valid'}
+
+# change username
+@users_route.route('/username', methods=['POST'])
+def change_username():
+	token = request.headers.get('Authorization')
+	payload = request.json
+	user = User(jwt_token=token)
+
+	result = user.change_username(payload['new_username'])
+	if result is None:
+		return {'ok': False, 'message': 'username is already exists'}
+	if result:
+		return {'ok': True, 'message': 'success'}
+	else:
+		return {'ok': False, 'message': 'failed'}
