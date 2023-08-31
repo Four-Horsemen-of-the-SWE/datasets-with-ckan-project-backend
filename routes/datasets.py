@@ -87,7 +87,7 @@ def get_dataset_datails(dataset_id):
 	user_id = ''
 	dataset_instance = Dataset()
 	# if dataset was deleted, return deleted
-	if not dataset_instance.is_active(dataset_id):
+	if dataset_instance.is_active(dataset_id) == False:
 		return {'ok': False, 'message': 'datasets deleted', 'is_authorized': False, 'active': False }
 
 	try:

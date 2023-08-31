@@ -42,7 +42,7 @@ class Dataset(PostgreSQL):
     def is_active(self, dataset_id):
         try:
             with self.engine.connect() as connection:
-                query_string = text("SELECT id, name, state FROM.public WHERE id = :dataset_id")
+                query_string = text("SELECT id, name, state FROM public.package WHERE id = :dataset_id")
                 result = connection.execute(query_string.bindparams(dataset_id = dataset_id)).mappings().one()
                 if result['state'] == 'active':
                     return True
