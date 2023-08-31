@@ -81,10 +81,15 @@ def get_datasets():
 # get dataset deails, (giving a name to api, then return that dataset)
 # since 27/6/2023 @JCSNP. this function will return a thumbnails
 # use in ViewDatasets page
-@datasets_route.route('/<dataset_name>', methods=['GET'])
-def get_dataset_datails(dataset_name):
+@datasets_route.route('/<dataset_id>', methods=['GET'])
+def get_dataset_datails(dataset_id):
 	token = request.headers.get('Authorization')
 	user_id = ''
+	dataset_instance = Dataset()
+	# if dataset was deleted, return deleted
+	if not dataset_instance.is_active(dataset_id):
+		return {'ok': False, 'message': 'datasets deleted', 'is_authorized': False, 'active': False }
+
 	try:
 		user = User(jwt_token=token)
 		if user.api_token is not None or user.api_token != '':
@@ -95,7 +100,7 @@ def get_dataset_datails(dataset_name):
 
 	try:
 		with ckan_connect(user_id) as ckan:
-			result = ckan.action.package_show(id=dataset_name)
+			result = ckan.action.package_show(id=dataset_id)
 
 			# get thumbnail
 			thumbnail = Thumbnail().get_thumbnail(result['id'])
@@ -107,16 +112,16 @@ def get_dataset_datails(dataset_name):
 			result['author'] = user.get_user_name(result['creator_user_id'])
 
 			# replace visibility value
-			result['private'] = Dataset().is_private(result['id'])
+			result['private'] = dataset_instance.is_private(result['id'])
 
 			# check if datasets bookmarked
 			try:
-				isBookmark = ckan.action.am_following_dataset(id=dataset_name)
+				isBookmark = ckan.action.am_following_dataset(id=dataset_id)
 				result['is_bookmark'] = isBookmark
 			except:
 				result['is_bookmark'] = False
 
-			return {'ok': True, 'message': 'success', 'result': result, 'is_authorized': True}
+			return {'ok': True, 'message': 'success', 'result': result, 'is_authorized': True, 'active': True}
 			
 	except NotFound:
 		return {'ok': False, 'message': 'datasets not found'}

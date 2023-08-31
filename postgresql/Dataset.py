@@ -38,6 +38,19 @@ class Dataset(PostgreSQL):
         except:
             return None
 
+    # if dataset active
+    def is_active(self, dataset_id):
+        try:
+            with self.engine.connect() as connection:
+                query_string = text("SELECT id, name, state FROM.public WHERE id = :dataset_id")
+                result = connection.execute(query_string.bindparams(dataset_id = dataset_id)).mappings().one()
+                if result['state'] == 'active':
+                    return True
+                else:
+                    return False
+        except:
+            return None
+
     # change visibility
     def change_visibility(self, dataset_id, visibility):
         try:
