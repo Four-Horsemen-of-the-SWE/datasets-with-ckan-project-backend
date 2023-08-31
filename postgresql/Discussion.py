@@ -171,8 +171,13 @@ class Discussion(User):
         return {'ok': False, 'message': 'cannot fetch topics'}
 
       with self.engine.connect() as connection:
-        query_string = text("DELETE FROM public.comment WHERE id = :id AND user_id = :user_id")
-        connection.execute(query_string.bindparams(id = comment_id, user_id = self.id))
+        query_string = None
+        if self.is_admin():
+          query_string = text("DELETE FROM public.comment WHERE id = :id")
+          connection.execute(query_string.bindparams(id = comment_id))
+        else:
+          query_string = text("DELETE FROM public.comment WHERE id = :id AND user_id = :user_id")
+          connection.execute(query_string.bindparams(id = comment_id, user_id = self.id))
         connection.commit()
 
         return {'ok': True, 'message': 'success', 'result': comment_id}
