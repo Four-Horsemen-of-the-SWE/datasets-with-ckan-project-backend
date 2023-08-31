@@ -287,6 +287,13 @@ def get_number_of_datasets():
 		result = ckan.action.package_list()
 		return {'ok': True, 'message': 'success', 'result': len(result)}
 
+# get a number of dataset (include private)
+@datasets_route.route('/number_all', methods=['GET'])
+def get_number_of_all_datasets():
+	with ckan_connect() as ckan:
+		result = Dataset().get_number_of_datasets()
+		return {'ok': True, 'message': 'success', 'result': result}
+
 # search datasets
 @datasets_route.route('/search', methods=['GET'])
 def search_datasets():
