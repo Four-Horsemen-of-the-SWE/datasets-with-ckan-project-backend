@@ -38,9 +38,10 @@ def check_if_user_is_admin():
 @users_route.route('/', methods=['GET'])
 def get_users():
 	api_key = request.headers.get('Authorization')
+	all_fields = request.args.get('all_fields', True)
 	
 	with ckan_connect(api_key=api_key) as ckan:
-		result = ckan.action.user_list()
+		result = ckan.action.user_list(all_fields=all_fields)
 		return {'ok': True, 'result': result}
 
 # search user (auto complete)

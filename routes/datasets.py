@@ -87,7 +87,7 @@ def get_dataset_datails(dataset_id):
 	user_id = ''
 	dataset_instance = Dataset()
 	# if dataset was deleted, return deleted
-	if not dataset_instance.is_active(dataset_id):
+	if dataset_instance.is_active(dataset_id) == False:
 		return {'ok': False, 'message': 'datasets deleted', 'is_authorized': False, 'active': False }
 
 	try:
@@ -286,6 +286,13 @@ def get_number_of_datasets():
 	with ckan_connect() as ckan:
 		result = ckan.action.package_list()
 		return {'ok': True, 'message': 'success', 'result': len(result)}
+
+# get a number of dataset (include private)
+@datasets_route.route('/number_all', methods=['GET'])
+def get_number_of_all_datasets():
+	with ckan_connect() as ckan:
+		result = Dataset().get_number_of_datasets()
+		return {'ok': True, 'message': 'success', 'result': result}
 
 # search datasets
 @datasets_route.route('/search', methods=['GET'])

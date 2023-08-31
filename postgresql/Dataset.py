@@ -42,7 +42,7 @@ class Dataset(PostgreSQL):
     def is_active(self, dataset_id):
         try:
             with self.engine.connect() as connection:
-                query_string = text("SELECT id, name, state FROM.public WHERE id = :dataset_id")
+                query_string = text("SELECT id, name, state FROM public.package WHERE id = :dataset_id")
                 result = connection.execute(query_string.bindparams(dataset_id = dataset_id)).mappings().one()
                 if result['state'] == 'active':
                     return True
@@ -105,3 +105,9 @@ class Dataset(PostgreSQL):
 
     		return {'ok': True, 'message': 'success', 'result': download_result, 'total_download': download_total}
 
+    # get number of active dataset (include private)
+    def get_number_of_datasets(self):
+        with self.engine.connect() as connection:
+            query_string = text("SELECT COUNT(id) FROM public.package WHERE state = 'active'")
+            result = connection.execute(query_string).mappings().one()
+            return result['count']
