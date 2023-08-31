@@ -305,12 +305,17 @@ def search_datasets():
     license = request.args.get('license', None)
     # sort
     sort = request.args.get('sort')
+    # date range
+    date_range = request.args.get('date_range', None)
 
     if len(tags):
         filter_query = " AND ".join(f'tags:{tag}' for tag in tags)
 
     if license is not None:
         filter_query += f' AND license_id:{license}'
+
+    if date_range is not None:
+    	filter_query += f' AND metadata_created:{date_range}'
 
     with ckan_connect() as ckan:
         result = []
