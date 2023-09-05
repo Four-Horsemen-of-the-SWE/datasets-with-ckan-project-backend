@@ -17,20 +17,21 @@ class Article(PostgreSQL):
 		with self.engine.connect() as connection:
 			try:
 				query_string = text("SELECT id, title, content, user_id, package_id, reference_url, created_at, updated_at FROM public.article WHERE package_id = :package_id")
-				result = dict(connection.execute(query_string.bindparams(package_id = package_id)).mappings().one())
+				query_result = connection.execute(query_string.bindparams(package_id = package_id)).mappings().all()
 
-				# format date
-				article_data = {
-          'id': result.get('id'),
-          'title': result.get('title'),
-          'content': result.get('content'),
-          'user_id': result.get('user_id'),
-          'package_id': result.get('package_id'),
-          'reference_url': result.get('reference_url'),
-          'created_at': result.get('created_at').isoformat(),
-          'updated_at': result.get('updated_at').isoformat()
-	      }
-				return {'ok': True, 'message': 'success', 'result': result, 'is_created': True}
+				article_data = []
+				for row in query_result:
+					article_data.append({
+			          'id': row.get('id'),
+			          'title': row.get('title'),
+			          'content': row.get('content'),
+			          'user_id': row.get('user_id'),
+			          'package_id': row.get('package_id'),
+			          'reference_url': row.get('reference_url'),
+			          'created_at': row.get('created_at').isoformat(),
+			          'updated_at': row.get('updated_at').isoformat()
+					})
+				return {'ok': True, 'message': 'success', 'result': article_data, 'is_created': True}
 			except NoResultFound:
 				return {'ok': True, 'message': 'article not created.', 'is_created': False}
 			except:
