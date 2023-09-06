@@ -119,14 +119,18 @@ class Article(PostgreSQL):
 
 	def dalete_comment(self, comment_id):
 		with self.engine.connect() as connection:
-			try:
-				query_string = text("DELETE FROM public.article_comment WHERE id = :comment_id AND user_id = :user_id")
-				connection.execute(query_string.bindparams(comment_id = comment_id, user_id = self.user.id))
+			#try:
+				if self.user.is_admin():
+					query_string = text("DELETE FROM public.article_comment WHERE id = :comment_id")
+					connection.execute(query_string.bindparams(comment_id = comment_id))
+				else:
+					query_string = text("DELETE FROM public.article_comment WHERE id = :comment_id AND user_id = :user_id")
+					connection.execute(query_string.bindparams(comment_id = comment_id, user_id = self.user.id))
 				connection.commit()
 
 				return True
-			except:
-				return False
+			#except:
+				#return False
 
 	def update_comment(self, comment_id, payload):
 		with self.engine.connect() as connection:
