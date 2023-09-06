@@ -6,6 +6,10 @@ from sqlalchemy.orm.exc import NoResultFound
 from .core.PostgreSQL import PostgreSQL
 from .User import User
 from datetime import datetime
+import json
+
+THUMBNAIL_FOLDER = os.getenv('THUMBNAIL_FOLDER')
+THUMBNAIL_HOST = os.getenv('THUMBNAIL_HOST')
 
 class Article(PostgreSQL):
 	def __init__(self, jwt_token: str = None):
@@ -16,7 +20,7 @@ class Article(PostgreSQL):
 	def get_article_by_package(self, package_id):
 		with self.engine.connect() as connection:
 			try:
-				query_string = text("SELECT id, title, content, user_id, package_id, reference_url, created_at, updated_at FROM public.article WHERE package_id = :package_id")
+				query_string = text("SELECT id, title, content, user_id, package_id, reference_url, thumbnail, created_at, updated_at FROM public.article WHERE package_id = :package_id")
 				query_result = connection.execute(query_string.bindparams(package_id = package_id)).mappings().all()
 
 				article_data = []
@@ -29,7 +33,8 @@ class Article(PostgreSQL):
 			          'package_id': row.get('package_id'),
 			          'reference_url': row.get('reference_url'),
 			          'created_at': row.get('created_at').isoformat(),
-			          'updated_at': row.get('updated_at').isoformat()
+			          'updated_at': row.get('updated_at').isoformat(),
+			          'thumbnail': str(THUMBNAIL_HOST) + '/' + str(row.get('thumbnail')) if row.get('thumbnail') is not None else None
 					})
 				return {'ok': True, 'message': 'success', 'result': article_data, 'is_created': True}
 			except NoResultFound:
@@ -37,19 +42,54 @@ class Article(PostgreSQL):
 			except:
 				return {'ok': False, 'message': 'backend failed.', 'is_created': None}
 
+	def get_article(self, article_id):
+		with self.engine.connect() as connection:
+			#try:
+				query_string = text("SELECT id, title, content, user_id, package_id, reference_url, created_at, updated_at FROM public.article WHERE id = :article_id")
+				query_result = connection.execute(query_string.bindparams(article_id = article_id)).mappings().one()
+				result = dict(query_result)
+				result['created_at'] = query_result['created_at'].isoformat()
+				result['updated_at'] = query_result['updated_at'].isoformat()
 
-	def create_article_by_package(self, payload):
+				return {'ok': True, 'message': 'success', 'result': result}
+			#except:
+				#return {'ok': False, 'message': 'failed'}
+
+	def create_article_by_package(self, title, content, package_id, file = None, article_id = None):
 		_id = uuid.uuid4()
 
+		if file is not None:
+			# create file name
+			file.filename = str(_id) + '_articles-thumbnail_' + datetime.now().strftime('%Y-%m-%d-%H-%M-%S') + os.path.splitext(file.filename)[1]
+			file_path = os.path.join(THUMBNAIL_FOLDER, file.filename)
+			file.save(file_path)
+
 		with self.engine.connect() as connection:
-			try:
-				query_string = text("INSERT INTO public.article( id, title, content, user_id, package_id, reference_url) VALUES (:id, :title, :content, :user_id, :package_id, :reference_url) ON CONFLICT (package_id) DO UPDATE SET title = :title, content = :content, user_id = :user_id, reference_url = :reference_url")
-				connection.execute(query_string.bindparams(id = _id, title = payload.get('title', None), content = json.dumps(payload.get('content')), user_id = self.user.id ,package_id = payload.get('package_id'), reference_url =payload.get('reference_url', None)))
+			#try:
+				raw = json.loads(content)
+				if file is not None:
+					query_string = ""
+					if article_id is not None:
+						query_string = text("UPDATE public.article SET title = :title, content = :content, user_id = :user_id, reference_url = :reference_url, thumbnail = :thumbnail WHERE id = :article_id")
+						connection.execute(query_string.bindparams(title = title, content = json.dumps(raw), user_id = self.user.id, reference_url = '', thumbnail = file.filename if file is not None else None, article_id = article_id))
+					else:
+						query_string = text("INSERT INTO public.article( id, title, content, user_id, package_id, reference_url, thumbnail) VALUES (:id, :title, :content, :user_id, :package_id, :reference_url, :thumbnail)")
+						connection.execute(query_string.bindparams(id = _id, title = title, content = json.dumps(raw), user_id = self.user.id ,package_id = package_id, reference_url = '', thumbnail = file.filename if file is not None else None))
+				else:
+					query_string = ""
+					if article_id is not None:
+						query_string = text("UPDATE public.article SET title = :title, content = :content, user_id = :user_id, reference_url = :reference_url WHERE id = :article_id")
+						connection.execute(query_string.bindparams(title = title, content = json.dumps(raw), user_id = self.user.id, reference_url = '', article_id = article_id))
+					else:
+						query_string = text("INSERT INTO public.article( id, title, content, user_id, package_id, reference_url) VALUES (:id, :title, :content, :user_id, :package_id, :reference_url)")
+						connection.execute(query_string.bindparams(id = _id, title = title, content = json.dumps(raw), user_id = self.user.id ,package_id = package_id, reference_url = ''))
 				connection.commit()
 
 				return True
-			except:
-				return False
+			#except FileNotFoundError:
+				#return False
+			#except:
+				#return False
 
 	def delete_article_by_id(self, article_id):
 		with self.engine.connect() as connection:
@@ -79,14 +119,18 @@ class Article(PostgreSQL):
 
 	def dalete_comment(self, comment_id):
 		with self.engine.connect() as connection:
-			try:
-				query_string = text("DELETE FROM public.article_comment WHERE id = :comment_id AND user_id = :user_id")
-				connection.execute(query_string.bindparams(comment_id = comment_id, user_id = self.user.id))
+			#try:
+				if self.user.is_admin():
+					query_string = text("DELETE FROM public.article_comment WHERE id = :comment_id")
+					connection.execute(query_string.bindparams(comment_id = comment_id))
+				else:
+					query_string = text("DELETE FROM public.article_comment WHERE id = :comment_id AND user_id = :user_id")
+					connection.execute(query_string.bindparams(comment_id = comment_id, user_id = self.user.id))
 				connection.commit()
 
 				return True
-			except:
-				return False
+			#except:
+				#return False
 
 	def update_comment(self, comment_id, payload):
 		with self.engine.connect() as connection:

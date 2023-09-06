@@ -5,11 +5,11 @@ from flask_cors import cross_origin
 
 article_route = Blueprint('article_route', __name__)
 
-# get a article by package_id
-@article_route.route('/<package_id>', methods=['GET'])
-def get_article(package_id):
+# get a article by article_id
+@article_route.route('/<article_id>', methods=['GET'])
+def get_article(article_id):
     jwt_token = request.headers.get('Authorization')
-    result = Article(jwt_token).get_article_by_package(package_id)
+    result = Article(jwt_token).get_article(article_id)
 
     return result
 
@@ -17,9 +17,16 @@ def get_article(package_id):
 @article_route.route('/', methods=['POST'])
 def create_article():
 	jwt_token = request.headers.get('Authorization')
-	payload = request.json
+	
+	# payload
+	title = request.form.get('title', None)
+	content = request.form.get('content', None)
+	package_id = request.form.get('package_id', None)
+	thumbnail = request.files.get('thumbnail', None)
 
-	result = Article(jwt_token).create_article_by_package(payload)
+	article_id = request.form.get('article_id', None)
+
+	result = Article(jwt_token).create_article_by_package(title = title, content = content, package_id = package_id, file = thumbnail, article_id = article_id)
 
 	if result:
 		return {'ok': True, 'message': 'success.'}
