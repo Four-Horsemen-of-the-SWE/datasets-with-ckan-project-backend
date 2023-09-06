@@ -17,9 +17,14 @@ def get_article(article_id):
 @article_route.route('/', methods=['POST'])
 def create_article():
 	jwt_token = request.headers.get('Authorization')
-	payload = request.json
+	
+	# payload
+	title = request.form.get('title', None)
+	content = request.form.get('content', None)
+	package_id = request.form.get('package_id', None)
+	thumbnail = request.files.get('thumbnail')
 
-	result = Article(jwt_token).create_article_by_package(payload)
+	result = Article(jwt_token).create_article_by_package(title = title, content = content, package_id = package_id, file = thumbnail)
 
 	if result:
 		return {'ok': True, 'message': 'success.'}

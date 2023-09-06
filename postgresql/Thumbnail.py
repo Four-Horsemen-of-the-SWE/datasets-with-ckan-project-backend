@@ -55,7 +55,7 @@ class Thumbnail(User):
 
   def create_thumbnail(self, package_id:str = None, file:any = None):
     if self._check_authorization(package_id):
-      # move image into folder
+      # create file name
       file.filename = package_id + '_datasets-thumbnail_' + datetime.now().strftime('%Y-%m-%d-%H-%M-%S') + os.path.splitext(file.filename)[1]
 
       file_path = os.path.join(THUMBNAIL_FOLDER, file.filename)

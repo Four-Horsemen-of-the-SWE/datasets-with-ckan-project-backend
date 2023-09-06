@@ -20,7 +20,7 @@ class Article(PostgreSQL):
 	def get_article_by_package(self, package_id):
 		with self.engine.connect() as connection:
 			try:
-				query_string = text("SELECT id, title, content, user_id, package_id, reference_url, created_at, updated_at FROM public.article WHERE package_id = :package_id")
+				query_string = text("SELECT id, title, content, user_id, package_id, reference_url, thumbnail, created_at, updated_at FROM public.article WHERE package_id = :package_id")
 				query_result = connection.execute(query_string.bindparams(package_id = package_id)).mappings().all()
 
 				article_data = []
@@ -33,7 +33,8 @@ class Article(PostgreSQL):
 			          'package_id': row.get('package_id'),
 			          'reference_url': row.get('reference_url'),
 			          'created_at': row.get('created_at').isoformat(),
-			          'updated_at': row.get('updated_at').isoformat()
+			          'updated_at': row.get('updated_at').isoformat(),
+			          'thumbnail': str(THUMBNAIL_HOST) + '/' + str(row.get('thumbnail')) if row.get('thumbnail') is not None else None
 					})
 				return {'ok': True, 'message': 'success', 'result': article_data, 'is_created': True}
 			except NoResultFound:
@@ -54,18 +55,27 @@ class Article(PostgreSQL):
 			#except:
 				#return {'ok': False, 'message': 'failed'}
 
-	def create_article_by_package(self, payload):
+	def create_article_by_package(self, title, content, package_id, file):
 		_id = uuid.uuid4()
 
+		if file is not None:
+			# create file name
+			file.filename = str(_id) + '_articles-thumbnail_' + datetime.now().strftime('%Y-%m-%d-%H-%M-%S') + os.path.splitext(file.filename)[1]
+			file_path = os.path.join(THUMBNAIL_FOLDER, file.filename)
+			file.save(file_path)
+
 		with self.engine.connect() as connection:
-			try:
-				query_string = text("INSERT INTO public.article( id, title, content, user_id, package_id, reference_url) VALUES (:id, :title, :content, :user_id, :package_id, :reference_url) ON CONFLICT (package_id) DO UPDATE SET title = :title, content = :content, user_id = :user_id, reference_url = :reference_url")
-				connection.execute(query_string.bindparams(id = _id, title = payload.get('title', None), content = json.dumps(payload.get('content')), user_id = self.user.id ,package_id = payload.get('package_id'), reference_url =payload.get('reference_url', None)))
+			# try:
+				raw = json.loads(content)
+				query_string = text("INSERT INTO public.article( id, title, content, user_id, package_id, reference_url, thumbnail) VALUES (:id, :title, :content, :user_id, :package_id, :reference_url, :thumbnail) ON CONFLICT (id) DO UPDATE SET title = :title, content = :content, user_id = :user_id, reference_url = :reference_url, thumbnail = :thumbnail")
+				connection.execute(query_string.bindparams(id = _id, title = title, content = json.dumps(raw), user_id = self.user.id ,package_id = package_id, reference_url = '', thumbnail = file.filename if file is not None else None))
 				connection.commit()
 
 				return True
-			except:
-				return False
+			# except FileNotFoundError:
+				# return False
+			# except:
+				# return False
 
 	def delete_article_by_id(self, article_id):
 		with self.engine.connect() as connection:
