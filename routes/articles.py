@@ -22,9 +22,11 @@ def create_article():
 	title = request.form.get('title', None)
 	content = request.form.get('content', None)
 	package_id = request.form.get('package_id', None)
-	thumbnail = request.files.get('thumbnail')
+	thumbnail = request.files.get('thumbnail', None)
 
-	result = Article(jwt_token).create_article_by_package(title = title, content = content, package_id = package_id, file = thumbnail)
+	article_id = request.form.get('article_id', None)
+
+	result = Article(jwt_token).create_article_by_package(title = title, content = content, package_id = package_id, file = thumbnail, article_id = article_id)
 
 	if result:
 		return {'ok': True, 'message': 'success.'}

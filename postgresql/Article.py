@@ -55,7 +55,7 @@ class Article(PostgreSQL):
 			#except:
 				#return {'ok': False, 'message': 'failed'}
 
-	def create_article_by_package(self, title, content, package_id, file):
+	def create_article_by_package(self, title, content, package_id, file = None, article_id = None):
 		_id = uuid.uuid4()
 
 		if file is not None:
@@ -65,17 +65,31 @@ class Article(PostgreSQL):
 			file.save(file_path)
 
 		with self.engine.connect() as connection:
-			# try:
+			#try:
 				raw = json.loads(content)
-				query_string = text("INSERT INTO public.article( id, title, content, user_id, package_id, reference_url, thumbnail) VALUES (:id, :title, :content, :user_id, :package_id, :reference_url, :thumbnail) ON CONFLICT (id) DO UPDATE SET title = :title, content = :content, user_id = :user_id, reference_url = :reference_url, thumbnail = :thumbnail")
-				connection.execute(query_string.bindparams(id = _id, title = title, content = json.dumps(raw), user_id = self.user.id ,package_id = package_id, reference_url = '', thumbnail = file.filename if file is not None else None))
+				if file is not None:
+					query_string = ""
+					if article_id is not None:
+						query_string = text("UPDATE public.article SET title = :title, content = :content, user_id = :user_id, reference_url = :reference_url, thumbnail = :thumbnail WHERE id = :article_id")
+						connection.execute(query_string.bindparams(title = title, content = json.dumps(raw), user_id = self.user.id, reference_url = '', thumbnail = file.filename if file is not None else None, article_id = article_id))
+					else:
+						query_string = text("INSERT INTO public.article( id, title, content, user_id, package_id, reference_url, thumbnail) VALUES (:id, :title, :content, :user_id, :package_id, :reference_url, :thumbnail)")
+						connection.execute(query_string.bindparams(id = _id, title = title, content = json.dumps(raw), user_id = self.user.id ,package_id = package_id, reference_url = '', thumbnail = file.filename if file is not None else None))
+				else:
+					query_string = ""
+					if article_id is not None:
+						query_string = text("UPDATE public.article SET title = :title, content = :content, user_id = :user_id, reference_url = :reference_url WHERE id = :article_id")
+						connection.execute(query_string.bindparams(title = title, content = json.dumps(raw), user_id = self.user.id, reference_url = '', article_id = article_id))
+					else:
+						query_string = text("INSERT INTO public.article( id, title, content, user_id, package_id, reference_url) VALUES (:id, :title, :content, :user_id, :package_id, :reference_url)")
+						connection.execute(query_string.bindparams(id = _id, title = title, content = json.dumps(raw), user_id = self.user.id ,package_id = package_id, reference_url = ''))
 				connection.commit()
 
 				return True
-			# except FileNotFoundError:
-				# return False
-			# except:
-				# return False
+			#except FileNotFoundError:
+				#return False
+			#except:
+				#return False
 
 	def delete_article_by_id(self, article_id):
 		with self.engine.connect() as connection:
