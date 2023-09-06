@@ -5,11 +5,11 @@ from flask_cors import cross_origin
 
 article_route = Blueprint('article_route', __name__)
 
-# get a article by package_id
-@article_route.route('/<package_id>', methods=['GET'])
-def get_article(package_id):
+# get a article by article_id
+@article_route.route('/<article_id>', methods=['GET'])
+def get_article(article_id):
     jwt_token = request.headers.get('Authorization')
-    result = Article(jwt_token).get_article_by_package(package_id)
+    result = Article(jwt_token).get_article(article_id)
 
     return result
 

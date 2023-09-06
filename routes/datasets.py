@@ -8,6 +8,7 @@ from ckan.ckan_connect import ckan_connect
 from postgresql.User import User
 from postgresql.Thumbnail import Thumbnail
 from postgresql.Dataset import Dataset
+from postgresql.Article import Article
 import tempfile
 import base64
 import io
@@ -463,3 +464,11 @@ def get_download_statistic(dataset_id):
 		return {'ok': True, 'message': 'success.', 'result': result['result'], 'total_download': result['total_download']}
 	else:
 		return {'ok': False, 'message': 'failed.'}
+
+# get all article from dataset
+@datasets_route.route('/<dataset_id>/articles', methods=['GET'])
+def get_article(dataset_id):
+	jwt_token = request.headers.get('Authorization')
+	result = Article(jwt_token).get_article_by_package(dataset_id)
+
+	return result

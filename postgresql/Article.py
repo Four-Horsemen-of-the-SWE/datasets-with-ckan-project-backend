@@ -6,6 +6,10 @@ from sqlalchemy.orm.exc import NoResultFound
 from .core.PostgreSQL import PostgreSQL
 from .User import User
 from datetime import datetime
+import json
+
+THUMBNAIL_FOLDER = os.getenv('THUMBNAIL_FOLDER')
+THUMBNAIL_HOST = os.getenv('THUMBNAIL_HOST')
 
 class Article(PostgreSQL):
 	def __init__(self, jwt_token: str = None):
@@ -37,6 +41,18 @@ class Article(PostgreSQL):
 			except:
 				return {'ok': False, 'message': 'backend failed.', 'is_created': None}
 
+	def get_article(self, article_id):
+		with self.engine.connect() as connection:
+			#try:
+				query_string = text("SELECT id, title, content, user_id, package_id, reference_url, created_at, updated_at FROM public.article WHERE id = :article_id")
+				query_result = connection.execute(query_string.bindparams(article_id = article_id)).mappings().one()
+				result = dict(query_result)
+				result['created_at'] = query_result['created_at'].isoformat()
+				result['updated_at'] = query_result['updated_at'].isoformat()
+
+				return {'ok': True, 'message': 'success', 'result': result}
+			#except:
+				#return {'ok': False, 'message': 'failed'}
 
 	def create_article_by_package(self, payload):
 		_id = uuid.uuid4()
